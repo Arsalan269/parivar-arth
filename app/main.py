@@ -152,21 +152,27 @@ def main():
         from planner.emergency import calculate_emergency_fund_target
 
         h_data = get_household_profile(db, user_id)
-        total_income = sum(float(inc.monthly_amount) for inc in h_data["incomes"])
-        total_obligations = sum(float(ob.monthly_amount) for ob in h_data["obligations"])
-        total_emis = sum(float(ln.monthly_emi) for ln in h_data["loans"])
-        total_liquid_savings = sum(float(a.current_value) for a in h_data["assets"] if a.is_liquid)
+        total_income = sum(float(getattr(inc, "amount", 0.0)) for inc in h_data.get("incomes", []))
+        total_obligations = sum(float(getattr(ob, "amount", 0.0)) for ob in h_data.get("obligations", []))
+        total_emis = sum(float(getattr(ln, "emi", 0.0)) for ln in h_data.get("loans", []))
+        total_liquid_savings = sum(
+            float(getattr(a, "amount", 0.0))
+            for a in h_data.get("assets", [])
+            if getattr(a, "is_liquid", False)
+        )
         
         # Calculate runway
         monthly_burn = total_obligations + total_emis
+        has_var_inc = any(bool(getattr(inc, "is_variable", False)) for inc in h_data.get("incomes", []))
+        has_dep_parents = any(str(getattr(m, "relation", "")).lower() == "parent" for m in h_data.get("members", []))
         ef_info = calculate_emergency_fund_target(
             monthly_essential_expenses=monthly_burn if monthly_burn > 0 else 1.0,
-            earners_count=len(h_data["incomes"]),
-            has_variable_income=any(getattr(inc, "income_type", "") == "variable" for inc in h_data["incomes"]),
-            has_dependent_parents=any(getattr(m, "relationship", "") == "parent" for m in h_data["members"]),
+            earners_count=len(h_data.get("incomes", [])),
+            has_variable_income=has_var_inc,
+            has_dependent_parents=has_dep_parents,
             current_liquid_assets=total_liquid_savings
         )
-        runway_months = ef_info.get("current_runway_months", 0.0)
+        runway_months = ef_info.get("runway_months", 0.0)
 
     # 4 Quick Metric Cards
     c1, c2, c3, c4 = st.columns(4)

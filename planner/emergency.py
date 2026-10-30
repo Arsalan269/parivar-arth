@@ -103,3 +103,31 @@ def calculate_liquid_emergency_fund(
         "advice": advice,
         "breakdown": breakdown
     }
+
+
+def calculate_emergency_fund_target(
+    monthly_essential_expenses: float,
+    earners_count: int,
+    has_variable_income: bool,
+    has_dependent_parents: bool,
+    current_liquid_assets: float
+) -> Dict[str, Any]:
+    """
+    High-level convenience helper for emergency runway calculation.
+    """
+    is_single_earner = (earners_count <= 1)
+    target_months, explanation = determine_emergency_fund_target_months(
+        is_single_earner=is_single_earner,
+        has_variable_income=has_variable_income,
+        has_chronic_dependents=has_dependent_parents
+    )
+    assets_list = [{"type": "Liquid Savings", "amount": current_liquid_assets, "is_liquid": True}]
+    result = calculate_liquid_emergency_fund(
+        assets=assets_list,
+        monthly_essential_cost=monthly_essential_expenses,
+        target_months=target_months
+    )
+    result["current_runway_months"] = result["runway_months"]
+    result["target_months"] = target_months
+    result["explanation"] = explanation
+    return result
