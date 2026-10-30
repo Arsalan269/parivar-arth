@@ -1,27 +1,23 @@
 # Core Web Application & Visualization
-streamlit==1.66.1
-plotly==6.5.2
+streamlit>=1.35.0
+plotly>=5.20.0
 
 # Data Science & Machine Learning
-pandas==2.2.3
-numpy==2.2.1
-scikit-learn==1.9.1
-xgboost==3.4.1
-statsmodels==0.15.0
-shap==0.54.1
+pandas>=2.1.0
+numpy>=1.26.0
+scikit-learn>=1.4.0
+xgboost>=2.0.0
+statsmodels>=0.14.0
 
 # Database & Security
-SQLAlchemy==2.1.6
-bcrypt==5.0.0
-python-dotenv==1.2.4
+SQLAlchemy>=2.0.0
+bcrypt>=4.0.0
+python-dotenv>=1.0.0
 
 # Financial Reporting (PDF & Excel)
-fpdf2==2.8.9
-openpyxl==3.1.5
+fpdf2>=2.7.0
+openpyxl>=3.1.0
 
 # Data Retrieval & External Drivers
-requests==2.32.3
-yfinance==1.7.0
-
-# Testing
-pytest==9.2.0
+requests>=2.31.0
+yfinance>=0.2.35

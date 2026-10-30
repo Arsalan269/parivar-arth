@@ -31,6 +31,15 @@ def main():
     # Initialize tables if not already present
     init_db()
 
+    # Auto-seed initial demo households & forecasts on fresh deployments (e.g. Streamlit Cloud)
+    with get_db_session() as db:
+        if db.query(User).count() == 0:
+            try:
+                from scripts.seed_demo_data import seed_database
+                seed_database()
+            except Exception:
+                pass
+
     # Apply Indian Warmth theme styling
     apply_theme()
 
