@@ -1,0 +1,55 @@
+# Python byte code and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# Environment files and credentials
+.env
+.env.*
+!.env.example
+.streamlit/secrets.toml
+!.streamlit/secrets.toml.example
+*.pem
+*.key
+*.cert
+*.crt
+
+# Database files (user data must never be uploaded)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+parivar_arth.db
+
+# Large binaries and raw datasets (>50MB)
+data/raw/
+*.pkl
+*.joblib
+reports/output/
+*.pdf
+*.xlsx
+
+# Testing and caching
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# IDE and OS files
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+.ipynb_checkpoints/
