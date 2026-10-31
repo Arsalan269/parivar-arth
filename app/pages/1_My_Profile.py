@@ -105,12 +105,12 @@ def show_onboarding_wizard(user_id: int):
         
         child_fees = 0
         if children_count > 0:
-            st.markdown("##### 🎓 Children's Education Fees (Mandatory as children were added)")
+            st.markdown("##### Children's Education Fees (Mandatory as children were added)")
             child_fees = st.number_input("Total Monthly School / Tuition Fees (₹)", min_value=100, value=6000, step=500)
 
         parent_medical = 0
         if parents_count > 0:
-            st.markdown("##### 🏥 Parents' Medical Provision (Mandatory as parents were added)")
+            st.markdown("##### Parents' Medical Provision (Mandatory as parents were added)")
             parent_medical = st.number_input("Monthly Medicines & Doctor Consultations (₹)", min_value=100, value=5000, step=500)
 
         st.markdown("---")
@@ -174,7 +174,7 @@ def show_onboarding_wizard(user_id: int):
                     help_data=help_list
                 )
                 if success:
-                    st.success("🎉 Household Profile successfully saved! Unlocking financial planners...")
+                    st.success("Household Profile successfully saved! Unlocking financial planners...")
                     st.rerun()
                 else:
                     st.error(f"Validation Error: {msg}")
@@ -194,7 +194,7 @@ def show_active_profile(user_id: int):
     assets = data["assets"]
     help_recs = data["household_help"]
 
-    tab_overview, tab_edit, tab_history = st.tabs(["🏠 Active Household Plan", "✏️ Edit & Version Expenses", "📜 What Changed (Audit Trail)"])
+    tab_overview, tab_edit, tab_history = st.tabs(["Active Household Plan", "Edit & Version Expenses", "What Changed (Audit Trail)"])
 
     # ---------------- TAB 1: OVERVIEW ----------------
     with tab_overview:
@@ -207,16 +207,16 @@ def show_active_profile(user_id: int):
         with col_m2:
             st.metric("Monthly Essential Obligations", format_inr(total_fixed))
 
-        st.markdown("#### 👨‍👩‍👧 Family Composition")
+        st.markdown("#### Family Composition")
         member_df = pd.DataFrame([{
             "Name": m.name,
             "Relation": m.relation,
             "Age": m.age,
-            "Chronic Health Condition": "⚠️ Yes" if m.has_chronic_condition else "No"
+            "Chronic Health Condition": "Yes" if m.has_chronic_condition else "No"
         } for m in members])
         st.dataframe(member_df, use_container_width=True)
 
-        st.markdown("#### 💼 Monthly Income Sources")
+        st.markdown("#### Monthly Income Sources")
         inc_df = pd.DataFrame([{
             "Source": i.source_type,
             "Monthly Amount": format_inr(i.amount),
@@ -225,7 +225,7 @@ def show_active_profile(user_id: int):
         } for i in incomes])
         st.dataframe(inc_df, use_container_width=True)
 
-        st.markdown("#### 🏷️ Active Essential Obligations")
+        st.markdown("#### Active Essential Obligations")
         ob_df = pd.DataFrame([{
             "Category": o.category,
             "Amount": format_inr(o.amount),
@@ -279,7 +279,7 @@ def show_active_profile(user_id: int):
 
     # ---------------- TAB 3: AUDIT HISTORY ----------------
     with tab_history:
-        st.markdown("#### 📜 Chronological 'What Changed' Audit Trail")
+        st.markdown("#### Chronological 'What Changed' Audit Trail")
         st.caption("Complete audit of all active and superseded financial versions.")
         if history:
             hist_df = pd.DataFrame(history)
@@ -291,7 +291,7 @@ def show_active_profile(user_id: int):
 
 
 def show_my_profile_page():
-    st.set_page_config(page_title="My Household Profile - Parivar Arth", page_icon="👨‍👩‍👧", layout="centered")
+    st.set_page_config(page_title="My Household Profile - Parivar Arth", page_icon=None, layout="centered")
     apply_theme()
     touch_session()
 
@@ -302,8 +302,7 @@ def show_my_profile_page():
 
     render_header(
         title="My Household Financial Profile",
-        subtitle="Versioned profile engine with family structure-driven obligations",
-        icon="👨‍👩‍👧"
+        subtitle="Versioned profile engine with family structure-driven obligations"
     )
 
     with get_db_session() as db:

@@ -27,7 +27,7 @@ from app.components.formatters import format_inr, format_pct
 
 
 def show_loans_emergency_page():
-    st.set_page_config(page_title="Loans & Emergency Fund - Parivar Arth", page_icon="💳", layout="centered")
+    st.set_page_config(page_title="Loans & Emergency Fund - Parivar Arth", page_icon=None, layout="centered")
     apply_theme()
     touch_session()
 
@@ -38,8 +38,7 @@ def show_loans_emergency_page():
 
     render_header(
         title="Loans & Emergency Fund Health",
-        subtitle="Manage debt stress, repo-rate sensitivity, and household emergency runway",
-        icon="💳"
+        subtitle="Manage debt stress, repo-rate sensitivity, and household emergency runway"
     )
 
     with get_db_session() as db:
@@ -71,7 +70,7 @@ def show_loans_emergency_page():
     asset_dicts = [{"type": a.type, "amount": a.amount, "is_liquid": a.is_liquid} for a in assets]
     ef_data = calculate_liquid_emergency_fund(asset_dicts, monthly_essentials, target_months=target_months)
 
-    tab_emergency, tab_loans, tab_repo = st.tabs(["🛡️ Emergency Fund Runway", "💳 Debt & Prepayment", "⚡ Repo Rate Sensitivity"])
+    tab_emergency, tab_loans, tab_repo = st.tabs(["Emergency Fund Runway", "Debt & Prepayment", "Repo Rate Sensitivity"])
 
     # ---------------- TAB 1: EMERGENCY FUND ----------------
     with tab_emergency:
@@ -100,7 +99,7 @@ def show_loans_emergency_page():
         st.markdown(f"**Emergency Target Progress ({format_inr(ef_data['total_liquid'])} of {format_inr(ef_data['target_amount'])})**")
         st.progress(ef_data["progress_pct"] / 100.0)
 
-        st.markdown("#### 💰 Counted Liquid Assets vs. Excluded Illiquid Assets")
+        st.markdown("#### Counted Liquid Assets vs. Excluded Illiquid Assets")
         if ef_data["breakdown"]:
             st.dataframe(pd.DataFrame(ef_data["breakdown"]), use_container_width=True)
         else:
@@ -114,13 +113,12 @@ def show_loans_emergency_page():
         with col_d1:
             st.metric("Total Outstanding Debt", format_inr(sum(l.balance for l in loans)))
         with col_d2:
-            badge_icon = "🟢" if dti_status == "Safe" else ("🟡" if dti_status == "Watch" else "🔴")
-            st.metric("Debt-to-Income (DTI)", f"{dti_pct}%", f"{badge_icon} {dti_status}")
+            st.metric("Debt-to-Income (DTI)", f"{dti_pct}%", f"[{dti_status}]")
 
         st.caption(f"**Banking Guidance:** {dti_advice}")
 
         st.markdown("---")
-        st.markdown("#### 🎯 Prepayment Strategy: Avalanche vs. Snowball")
+        st.markdown("#### Prepayment Strategy: Avalanche vs. Snowball")
         st.write("Accelerate debt freedom by deploying an extra prepayment each month:")
 
         extra_prepay = st.number_input("Extra Monthly Debt Prepayment (₹)", min_value=1000.0, value=5000.0, step=1000.0)
@@ -130,20 +128,20 @@ def show_loans_emergency_page():
 
         col_av, col_sn = st.columns(2)
         with col_av:
-            st.markdown("##### 🏔️ Avalanche (Highest APR First)")
+            st.markdown("##### Avalanche (Highest APR First)")
             st.caption("Mathematically saves the highest interest in rupees.")
             for r in ranks["avalanche"]:
                 st.info(r["recommendation"])
 
         with col_sn:
-            st.markdown("##### ⛄ Snowball (Smallest Balance First)")
+            st.markdown("##### Snowball (Smallest Balance First)")
             st.caption("Eliminates loan counts fast for psychological momentum.")
             for r in ranks["snowball"]:
                 st.success(r["recommendation"])
 
     # ---------------- TAB 3: REPO SENSITIVITY ----------------
     with tab_repo:
-        st.markdown("#### ⚡ RBI Repo Rate Floating Loan Sensitivity Shock")
+        st.markdown("#### RBI Repo Rate Floating Loan Sensitivity Shock")
         st.markdown(
             """
             When the Reserve Bank of India increases the policy repo rate, banks immediately pass on 
@@ -187,7 +185,7 @@ def show_loans_emergency_page():
             st.metric("Monthly Outflow Increase", f"+{format_inr(shock_res['emi_increase'])}")
 
         st.warning(
-            f"⚠️ **Tenure Impact Option:** If your bank keeps your monthly EMI fixed instead of increasing it, "
+            f"**Tenure Impact Option:** If your bank keeps your monthly EMI fixed instead of increasing it, "
             f"your loan tenure will automatically extend by **+{shock_res['tenure_extension_months']} months** "
             f"(~{shock_res['tenure_extension_months'] // 12} years), resulting in substantial additional interest paid to the lender."
         )

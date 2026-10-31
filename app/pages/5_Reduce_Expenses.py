@@ -22,7 +22,7 @@ from app.components.formatters import format_inr
 
 
 def show_reduce_expenses_page():
-    st.set_page_config(page_title="Reduce Necessary Expenses - Parivar Arth", page_icon="✂️", layout="centered")
+    st.set_page_config(page_title="Reduce Necessary Expenses - Parivar Arth", page_icon=None, layout="centered")
     apply_theme()
     touch_session()
 
@@ -33,8 +33,7 @@ def show_reduce_expenses_page():
 
     render_header(
         title="Reduce Necessary Expenses",
-        subtitle="Practical room to optimize essential costs ranked by monthly rupee impact",
-        icon="✂️"
+        subtitle="Practical room to optimize essential costs ranked by monthly rupee impact"
     )
 
     # Honest framing banner
@@ -75,7 +74,7 @@ def show_reduce_expenses_page():
         render_footer()
         return
 
-    st.markdown("### 🎯 Prioritized Reduction Levers")
+    st.markdown("### Prioritized Reduction Levers")
     st.caption("Select the practical levers your family can adopt to calculate your total monthly savings:")
 
     selected_savings = 0.0
@@ -121,7 +120,7 @@ def show_reduce_expenses_page():
     st.markdown(
         f"""
         <div style="background-color: #E6F4F2; border: 2px solid {PRIMARY_TEAL}; border-radius: 12px; padding: 18px; text-align: center; margin-top: 1rem;">
-            <h4 style="margin: 0; color: {TEXT_NAVY};">💡 Total Reclaimed Monthly Cash Flow</h4>
+            <h4 style="margin: 0; color: {TEXT_NAVY};">Total Reclaimed Monthly Cash Flow</h4>
             <div style="font-size: 2.2rem; font-weight: 900; color: {PRIMARY_TEAL}; margin: 8px 0;">
                 +{format_inr(selected_savings)}/month
             </div>

@@ -28,7 +28,7 @@ from app.components.formatters import format_inr, format_pct
 
 
 def show_future_planner_page():
-    st.set_page_config(page_title="Future Planner & Shortfall Engine - Parivar Arth", page_icon="🔮", layout="centered")
+    st.set_page_config(page_title="Future Planner & Shortfall Engine - Parivar Arth", page_icon=None, layout="centered")
     apply_theme()
     touch_session()
 
@@ -39,8 +39,7 @@ def show_future_planner_page():
 
     render_header(
         title="Future Shortfall Predictor",
-        subtitle="Forecasted category inflation applied to your real household finances",
-        icon="🔮"
+        subtitle="Forecasted category inflation applied to your real household finances"
     )
 
     with get_db_session() as db:
@@ -65,10 +64,10 @@ def show_future_planner_page():
             category_intervals[f.category] = (f.lower_ci, f.predicted_inflation, f.upper_ci)
 
     tab_shortfall, tab_montecarlo, tab_whatif, tab_milestones = st.tabs([
-        "🔮 24-Month Shortfall Timeline",
-        "🎲 Monte Carlo Risk (1,000 Runs)",
-        "🧪 What-If Scenarios & Shocks",
-        "👨‍👩‍👧 Family Planning Milestones"
+        "24-Month Shortfall Timeline",
+        "Monte Carlo Risk (1,000 Runs)",
+        "What-If Scenarios & Shocks",
+        "Family Planning Milestones"
     ])
 
     # ---------------- TAB 1: SHORTFALL TIMELINE ----------------
@@ -98,7 +97,7 @@ def show_future_planner_page():
                 <p style="margin: 8px 0 0 0; color: #475569; font-size: 0.95rem; line-height: 1.4;">
                     {shortfall_res['explanation']}
                 </p>
-                {f'<div style="margin-top: 8px; color: #DC2626; font-weight: bold;">⚠️ Month of Shortfall: Month {shortfall_res["shortfall_month"]} (Projected Monthly Deficit: ₹{shortfall_res["max_shortfall_amount"]:,.0f})</div>' if shortfall_res['shortfall_month'] else '<div style="margin-top: 8px; color: #16A34A; font-weight: bold;">✅ No cash-flow shortfall detected within 24 months.</div>'}
+                {f'<div style="margin-top: 8px; color: #DC2626; font-weight: bold;">Month of Shortfall: Month {shortfall_res["shortfall_month"]} (Projected Monthly Deficit: ₹{shortfall_res["max_shortfall_amount"]:,.0f})</div>' if shortfall_res['shortfall_month'] else '<div style="margin-top: 8px; color: #16A34A; font-weight: bold;">No cash-flow shortfall detected within 24 months.</div>'}
             </div>
             """,
             unsafe_allow_html=True
@@ -151,7 +150,7 @@ def show_future_planner_page():
 
     # ---------------- TAB 2: MONTE CARLO (1,000 RUNS) ----------------
     with tab_montecarlo:
-        st.markdown("#### 🎲 1,000-Run Monte Carlo Inflation Volatility Simulation")
+        st.markdown("#### 1,000-Run Monte Carlo Inflation Volatility Simulation")
         st.markdown(
             """
             Instead of assuming one fixed inflation number, this simulation samples 1,000 potential 
@@ -215,7 +214,7 @@ def show_future_planner_page():
 
     # ---------------- TAB 3: WHAT-IF SCENARIOS ----------------
     with tab_whatif:
-        st.markdown("#### 🧪 Test Stress Shocks on Your Household")
+        st.markdown("#### Test Stress Shocks on Your Household")
         st.caption("Evaluate how life events or external macro shocks impact your financial runway.")
 
         scenario_choice = st.selectbox(
@@ -229,28 +228,28 @@ def show_future_planner_page():
         )
 
         if "Job Loss" in scenario_choice:
-            st.warning("💼 **Simulating 3-Month Income Loss:** Evaluating how long your liquid emergency fund lasts.")
+            st.warning("**Simulating 3-Month Income Loss:** Evaluating how long your liquid emergency fund lasts.")
             monthly_essential_cost = sum(o["amount"] for o in obligation_dicts) + monthly_emis
             runway_left = round(liquid_reserves / monthly_essential_cost, 1) if monthly_essential_cost > 0 else 0
             st.metric("Liquid Emergency Reserves Available", format_inr(liquid_reserves))
             st.metric("Emergency Runway Without Income", f"{runway_left} Months")
 
             if runway_left >= 3.0:
-                st.success(f"✅ Your emergency fund provides {runway_left} months of buffer, successfully absorbing a 3-month job transition.")
+                st.success(f"Your emergency fund provides {runway_left} months of buffer, successfully absorbing a 3-month job transition.")
             else:
-                st.error(f"🔴 Vulnerable! Your runway is only {runway_left} months. A 3-month gap would deplete reserves in Month {int(runway_left)}.")
+                st.error(f"Vulnerable: Your runway is only {runway_left} months. A 3-month gap would deplete reserves in Month {int(runway_left)}.")
 
         elif "Medical" in scenario_choice:
-            st.warning("🏥 **Simulating ₹1,50,000 Out-of-Pocket Hospitalization Shock:**")
+            st.warning("**Simulating ₹1,50,000 Out-of-Pocket Hospitalization Shock:**")
             remaining_liquid = liquid_reserves - 150000.0
             st.metric("Liquid Reserves After Medical Shock", format_inr(remaining_liquid))
             if remaining_liquid > 0:
                 st.info(f"Your liquid assets absorb the ₹1.5L shock, leaving ₹{remaining_liquid:,.0f} in reserves.")
             else:
-                st.error("🔴 Liquid reserves completely exhausted! You would require short-term borrowing or personal loans.")
+                st.error("Liquid reserves completely exhausted! You would require short-term borrowing or personal loans.")
 
         elif "Crude" in scenario_choice:
-            st.warning("🛢️ **Simulating Global Crude Oil Surge:** Petrol/diesel and LPG fuel increase by +15%.")
+            st.warning("**Simulating Global Crude Oil Surge:** Petrol/diesel and LPG fuel increase by +15%.")
             shocked_obs = []
             for ob in obligation_dicts:
                 if ob["category"] in ["Commute", "Utilities"]:
@@ -262,7 +261,7 @@ def show_future_planner_page():
             st.info(f"Status under shock: **{res_shock['badge']}** • Month of shortfall: {res_shock['shortfall_month'] or 'None'}")
 
         elif "Monsoon" in scenario_choice:
-            st.warning("🌧️ **Simulating Deficit Monsoon:** Vegetable and staple grocery costs surge by +20%.")
+            st.warning("**Simulating Deficit Monsoon:** Vegetable and staple grocery costs surge by +20%.")
             shocked_obs = []
             for ob in obligation_dicts:
                 if ob["category"] == "Groceries":
@@ -275,7 +274,7 @@ def show_future_planner_page():
 
     # ---------------- TAB 4: FAMILY PLANNING MILESTONES ----------------
     with tab_milestones:
-        st.markdown("#### 🎓 Children's Education Milestones")
+        st.markdown("#### Children's Education Milestones")
         children = [m for m in members if m.relation == "Child"]
         if children:
             for ch in children:
@@ -298,7 +297,7 @@ def show_future_planner_page():
             st.info("No children registered in your household profile. You can add family members under 'My Household Profile'.")
 
         st.markdown("---")
-        st.markdown("#### 🏥 Elderly Parents' Healthcare Provision")
+        st.markdown("#### Elderly Parents' Healthcare Provision")
         parents = [m for m in members if m.relation == "Parent"]
         if parents:
             for p in parents:

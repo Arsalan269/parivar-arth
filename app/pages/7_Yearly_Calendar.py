@@ -28,7 +28,7 @@ from app.components.formatters import format_inr
 
 
 def show_yearly_calendar_page():
-    st.set_page_config(page_title="Yearly Calendar & Sinking Funds - Parivar Arth", page_icon="📅", layout="centered")
+    st.set_page_config(page_title="Yearly Calendar & Sinking Funds - Parivar Arth", page_icon=None, layout="centered")
     apply_theme()
     touch_session()
 
@@ -39,8 +39,7 @@ def show_yearly_calendar_page():
 
     render_header(
         title="12-Month Cash-Flow Calendar",
-        subtitle="Forecast lump-sum expenses, sinking funds & heavy months",
-        icon="📅"
+        subtitle="Forecast lump-sum expenses, sinking funds & heavy months"
     )
 
     with get_db_session() as db:
@@ -89,7 +88,7 @@ def show_yearly_calendar_page():
         st.markdown(
             f"""
             <div style="background-color: #FEF3C7; border-left: 4px solid {ACCENT_SAFFRON}; padding: 12px; border-radius: 8px; margin-bottom: 1rem;">
-                <strong style="color: #78350F;">⚠️ Heavy Expenditure Months Detected: {', '.join(heavy_names)}</strong><br>
+                <strong style="color: #78350F;">Heavy Expenditure Months Detected: {', '.join(heavy_names)}</strong><br>
                 <span style="font-size: 0.9rem; color: #92400E;">
                 During these months, school admissions, festival travel, or insurance premiums cluster together. 
                 Using the sinking fund allocations below prevents cash flow shortfalls.
@@ -99,7 +98,7 @@ def show_yearly_calendar_page():
             unsafe_allow_html=True
         )
 
-    tab_cal, tab_sinking, tab_add_rec = st.tabs(["📅 12-Month Outflow Matrix", "🏺 Sinking Fund Reserves", "➕ Add Recurring Obligation"])
+    tab_cal, tab_sinking, tab_add_rec = st.tabs(["12-Month Outflow Matrix", "Sinking Fund Reserves", "Add Recurring Obligation"])
 
     # ---------------- TAB 1: CALENDAR MATRIX ----------------
     with tab_cal:
@@ -137,7 +136,7 @@ def show_yearly_calendar_page():
         )
         st.plotly_chart(fig_bar, use_container_width=True)
 
-        st.markdown("#### 📋 Month-by-Month Projected Breakdown")
+        st.markdown("#### Month-by-Month Projected Breakdown")
         display_df = df_matrix[["Month", "Base_Fixed_Costs", "Lump_Sums_Due", "Total_Outflow", "Net_Surplus", "Lump_Details"]].copy()
         display_df["Base_Fixed_Costs"] = display_df["Base_Fixed_Costs"].apply(format_inr)
         display_df["Lump_Sums_Due"] = display_df["Lump_Sums_Due"].apply(format_inr)
@@ -147,7 +146,7 @@ def show_yearly_calendar_page():
 
     # ---------------- TAB 2: SINKING FUNDS ----------------
     with tab_sinking:
-        st.markdown("#### 🏺 Monthly Sinking Fund Allocations")
+        st.markdown("#### Monthly Sinking Fund Allocations")
         st.markdown(
             """
             Instead of getting blindsided by a ₹48,000 school fee in April or a ₹24,000 insurance bill in November,

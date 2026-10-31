@@ -143,18 +143,13 @@ def apply_theme():
     st.markdown(CSS_RULES, unsafe_allow_html=True)
 
 
-def render_header(title: str, subtitle: str = "", icon: str = "₹ 📈"):
-    """Render a consistent branded header."""
+def render_header(title: str, subtitle: str = "", icon: str = ""):
+    """Render a consistent branded header without emojis."""
     st.markdown(
         f"""
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 0.5rem;">
-            <div style="background-color: #E6F4F2; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; color: {PRIMARY_TEAL};">
-                {icon}
-            </div>
-            <div>
-                <h2 style="margin: 0; font-size: 1.6rem; color: {TEXT_NAVY};">{title}</h2>
-                {f'<p style="margin: 0; color: #5A6A80; font-size: 0.95rem;">{subtitle}</p>' if subtitle else ''}
-            </div>
+        <div style="margin-bottom: 1.25rem; padding-bottom: 0.5rem; border-bottom: 2px solid #E2E8F0;">
+            <h2 style="margin: 0; font-size: 1.7rem; color: {TEXT_NAVY}; font-weight: 700;">{title}</h2>
+            {f'<p style="margin: 4px 0 0 0; color: #5A6A80; font-size: 0.95rem;">{subtitle}</p>' if subtitle else ''}
         </div>
         """,
         unsafe_allow_html=True
@@ -162,23 +157,23 @@ def render_header(title: str, subtitle: str = "", icon: str = "₹ 📈"):
 
 
 def render_status_badge(status: str) -> str:
-    """Return HTML for a status badge that always includes both icon and label."""
+    """Return HTML for a status badge without emojis."""
     norm = status.strip().lower()
     if "safe" in norm:
-        return '<span class="status-badge status-safe">🟢 Safe</span>'
+        return '<span class="status-badge status-safe">[Safe]</span>'
     elif "watch" in norm:
-        return '<span class="status-badge status-watch">🟡 Watch</span>'
+        return '<span class="status-badge status-watch">[Watch]</span>'
     elif "risk" in norm or "danger" in norm:
-        return '<span class="status-badge status-at-risk">🔴 At Risk</span>'
-    return f'<span class="status-badge status-watch">⚪ {status}</span>'
+        return '<span class="status-badge status-at-risk">[At Risk]</span>'
+    return f'<span class="status-badge status-watch">[{status}]</span>'
 
 
 def render_footer():
-    """Render the standard mandatory disclaimer footer."""
+    """Render the standard mandatory disclaimer footer without Hindi text."""
     st.markdown(
         f"""
         <div class="parivar-footer">
-            <p><strong>Parivar Arth (परिवार अर्थ)</strong> • {DISCLAIMER_FOOTER}</p>
+            <p><strong>Parivar Arth</strong> - {DISCLAIMER_FOOTER}</p>
         </div>
         """,
         unsafe_allow_html=True

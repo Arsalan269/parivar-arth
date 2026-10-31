@@ -16,7 +16,7 @@ from app.styles import PRIMARY_TEAL, ACCENT_SAFFRON, TEXT_NAVY
 
 def render_auth_tabs():
     """Render Tabbed Authentication Interface: Login, Register, Forgot Password."""
-    login_tab, register_tab, reset_tab = st.tabs(["🔑 Log In", "📝 Register New Family", "🔄 Forgot Password"])
+    login_tab, register_tab, reset_tab = st.tabs(["Log In", "Register New Family", "Forgot Password"])
 
     # ---------------- LOGIN TAB ----------------
     with login_tab:
@@ -50,7 +50,7 @@ def render_auth_tabs():
                                 "role": user.role
                             }
                             touch_session()
-                            st.success(f"Namaste, {user.name}! Signing you in...")
+                            st.success(f"Welcome, {user.name}! Signing you in...")
                             time.sleep(0.5)
                             st.rerun()
                         else:
@@ -160,7 +160,7 @@ def render_auth_tabs():
 
 def render_delete_account_dialog(user_id: int):
     """Render Delete Account confirmation modal/expander."""
-    with st.expander("⚠️ Danger Zone: Delete My Account", expanded=False):
+    with st.expander("Danger Zone: Delete My Account", expanded=False):
         st.markdown(
             """
             <div style="color: #DC2626; font-size: 0.9rem; margin-bottom: 10px;">

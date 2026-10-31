@@ -26,7 +26,7 @@ from app.components.formatters import format_inr
 
 
 def show_reports_page():
-    st.set_page_config(page_title="Reports & Exports - Parivar Arth", page_icon="📑", layout="centered")
+    st.set_page_config(page_title="Reports & Exports - Parivar Arth", page_icon=None, layout="centered")
     apply_theme()
     touch_session()
 
@@ -37,8 +37,7 @@ def show_reports_page():
 
     render_header(
         title="Household Reports & Exports",
-        subtitle="Download official, inflation-adjusted PDF & Excel statements",
-        icon="📑"
+        subtitle="Download official, inflation-adjusted PDF & Excel statements"
     )
 
     user_data = st.session_state.get("user", {})
@@ -106,7 +105,7 @@ def show_reports_page():
     col1, col2 = st.columns(2)
 
     with col1:
-        st.markdown("#### 📄 Executive PDF Statement")
+        st.markdown("#### Executive PDF Statement")
         st.write("Clean, branded executive summary with status badges, milestone tables, and statutory disclaimer.")
         pdf_bytes = generate_household_pdf_report(
             user_name=user_name,
@@ -118,7 +117,7 @@ def show_reports_page():
             emergency_data=emergency_data
         )
         st.download_button(
-            label="⬇️ Download PDF Statement",
+            label="Download PDF Statement",
             data=pdf_bytes,
             file_name=f"Parivar_Arth_Report_{datetime.now().strftime('%Y%m%d')}.pdf",
             mime="application/pdf",
@@ -127,7 +126,7 @@ def show_reports_page():
         )
 
     with col2:
-        st.markdown("#### 📊 Comprehensive Excel Workbook")
+        st.markdown("#### Comprehensive Excel Workbook")
         st.write("Multi-tab financial model (.xlsx) with 24-month cashflow projections, loan amortization, and obligations.")
         excel_bytes = generate_household_excel_workbook(
             user_name=user_name,
@@ -138,7 +137,7 @@ def show_reports_page():
             emergency_data=emergency_data
         )
         st.download_button(
-            label="⬇️ Download Excel Workbook (.xlsx)",
+            label="Download Excel Workbook (.xlsx)",
             data=excel_bytes,
             file_name=f"Parivar_Arth_Workbook_{datetime.now().strftime('%Y%m%d')}.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

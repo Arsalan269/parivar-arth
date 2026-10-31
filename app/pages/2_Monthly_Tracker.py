@@ -38,7 +38,7 @@ TRACKER_CATEGORIES = [
 
 
 def show_monthly_tracker_page():
-    st.set_page_config(page_title="Monthly Expense Tracker - Parivar Arth", page_icon="📊", layout="centered")
+    st.set_page_config(page_title="Monthly Expense Tracker - Parivar Arth", page_icon=None, layout="centered")
     apply_theme()
     touch_session()
 
@@ -49,8 +49,7 @@ def show_monthly_tracker_page():
 
     render_header(
         title="Monthly Expense Tracker",
-        subtitle="Log day-to-day spending and detect family overspending anomalies",
-        icon="📊"
+        subtitle="Log day-to-day spending and detect family overspending anomalies"
     )
 
     with get_db_session() as db:
@@ -67,21 +66,21 @@ def show_monthly_tracker_page():
             st.markdown(
                 f"""
                 <div style="background-color: #FEF2F2; border-left: 4px solid #DC2626; padding: 12px; border-radius: 8px; margin-bottom: 0.75rem;">
-                    <strong style="color: #991B1B;">⚠️ Overspending Alert ({anom['category']}):</strong><br>
+                    <strong style="color: #991B1B;">Overspending Alert ({anom['category']}):</strong><br>
                     <span style="font-size: 0.9rem; color: #7F1D1D;">{anom['message']} (z-score: {anom['z_score']})</span>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
 
-    tab_overview, tab_add, tab_import = st.tabs(["📊 Spending Overview", "➕ Log New Expense", "📁 Import CSV Statement"])
+    tab_overview, tab_add, tab_import = st.tabs(["Spending Overview", "Log New Expense", "Import CSV Statement"])
 
     # ---------------- TAB 1: OVERVIEW ----------------
     with tab_overview:
         # Needs / Wants / Savings Split
         split_data = compute_needs_wants_savings_split(total_monthly_income, total_fixed_obligations, expenses)
 
-        st.markdown("#### ⚖️ Needs / Wants / Savings Distribution")
+        st.markdown("#### Needs / Wants / Savings Distribution")
         st.caption("Standard 50/30/20 benchmark vs your family's actual allocation.")
 
         col1, col2, col3 = st.columns(3)
@@ -93,7 +92,7 @@ def show_monthly_tracker_page():
             st.metric("Estimated Savings", format_inr(split_data["savings_amount"]), f"{split_data['savings_pct']}% of income")
 
         if split_data["is_high_needs"]:
-            st.info("💡 **Indian Household Context:** Your essential Needs exceed 60% of income. This is very common in Indian urban families managing rent, school fees, and medical care.")
+            st.info("**Indian Household Context:** Your essential Needs exceed 60% of income. This is very common in Indian urban families managing rent, school fees, and medical care.")
 
         st.markdown("---")
 
@@ -121,14 +120,14 @@ def show_monthly_tracker_page():
             st.plotly_chart(fig_donut, use_container_width=True)
 
             # Recent Transactions
-            st.markdown("#### 📜 Recorded Expenses")
+            st.markdown("#### Recorded Expenses")
             st.dataframe(
                 exp_df[["Date", "Category", "Amount", "Note"]].sort_values("Date", ascending=False),
                 use_container_width=True
             )
 
             # Quick delete option
-            with st.expander("🗑️ Delete a transaction entry"):
+            with st.expander("Delete a transaction entry"):
                 del_id = st.selectbox("Select Transaction ID to Delete", options=exp_df["id"].tolist())
                 if st.button("Delete Selected Transaction", type="secondary"):
                     with get_db_session() as db:

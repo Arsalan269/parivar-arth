@@ -28,7 +28,7 @@ from app.components.formatters import format_inr
 
 
 def show_savings_advisor_page():
-    st.set_page_config(page_title="Savings Advisor - Parivar Arth", page_icon="💡", layout="centered")
+    st.set_page_config(page_title="Savings Advisor - Parivar Arth", page_icon=None, layout="centered")
     apply_theme()
     touch_session()
 
@@ -39,8 +39,7 @@ def show_savings_advisor_page():
 
     render_header(
         title="Savings Advisor & Goals",
-        subtitle="Ranked savings recommendations and inflation-adjusted milestone planning",
-        icon="💡"
+        subtitle="Ranked savings recommendations and inflation-adjusted milestone planning"
     )
 
     with get_db_session() as db:
@@ -72,11 +71,11 @@ def show_savings_advisor_page():
         wants_spending=monthly_var_expenses * 0.4
     )
 
-    tab_recs, tab_benchmarks, tab_goals = st.tabs(["💡 High-Impact Levers", "📊 Peer Benchmarks", "🎯 Goal Planner"])
+    tab_recs, tab_benchmarks, tab_goals = st.tabs(["High-Impact Levers", "Peer Benchmarks", "Goal Planner"])
 
     # ---------------- TAB 1: SAVINGS RECOMMENDATIONS ----------------
     with tab_recs:
-        st.markdown("#### 🎯 Prioritized Savings Levers (Ranked by Rupee Impact)")
+        st.markdown("#### Prioritized Savings Levers (Ranked by Rupee Impact)")
         st.caption("Focus on the highest rupee return first to maximize family financial headroom.")
 
         if recs:
@@ -103,7 +102,7 @@ def show_savings_advisor_page():
 
     # ---------------- TAB 2: PEER BENCHMARKS ----------------
     with tab_benchmarks:
-        st.markdown("#### 📊 Household Consumption Survey Peer Comparison")
+        st.markdown("#### Household Consumption Survey Peer Comparison")
         st.markdown(
             """
             How does your family's allocation compare to similar households in your city tier?
@@ -139,11 +138,11 @@ def show_savings_advisor_page():
                 delta_color="inverse"
             )
 
-        st.caption(f"ℹ️ {bench['note']}")
+        st.caption(f"Note: {bench['note']}")
 
     # ---------------- TAB 3: GOAL PLANNER ----------------
     with tab_goals:
-        st.markdown("#### 🎯 Inflation-Adjusted Goal Calculator")
+        st.markdown("#### Inflation-Adjusted Goal Calculator")
         st.caption("Plan for marriage, vehicle purchase, or home downpayment with compounding inflation.")
 
         with st.form("goal_calculator_form"):
