@@ -89,22 +89,6 @@ def main():
             st.session_state.clear()
             st.rerun()
 
-        st.markdown("---")
-        st.markdown("#### Navigation")
-        st.markdown(
-            """
-            - Home / Overview
-            - My Household Profile
-            - Monthly Expense Tracker
-            - Savings Advisor
-            - Future Planner (Shortfall Engine)
-            - Reduce Necessary Expenses
-            - Loans & Emergency Fund
-            - 12-Month Cashflow Calendar
-            - PDF & Excel Reports
-            """
-        )
-
     # 4. Mandatory Onboarding Check Guard
     with get_db_session() as db:
         profile = db.query(Profile).filter(Profile.user_id == user_id).first()
