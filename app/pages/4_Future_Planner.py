@@ -251,10 +251,18 @@ def show_future_planner_page():
         with st.expander("View Detailed Month-by-Month Cash Flow Table", expanded=False):
             df_display = df_time.copy()
             df_display["Projected_Income"] = df_display["Projected_Income"].apply(format_inr)
+            if "Essential_Expenses" in df_display.columns:
+                df_display["Essential_Expenses"] = df_display["Essential_Expenses"].apply(format_inr)
+            if "EMIs" in df_display.columns:
+                df_display["EMIs"] = df_display["EMIs"].apply(format_inr)
             df_display["Total_Outflows"] = df_display["Total_Outflows"].apply(format_inr)
             df_display["Net_Surplus"] = df_display["Net_Surplus"].apply(format_inr)
-            df_display["Status"] = df_display["Status"].apply(lambda s: s.upper())
-            st.dataframe(df_display, use_container_width=True)
+            if "Status" in df_display.columns:
+                df_display["Status"] = df_display["Status"].apply(lambda s: str(s).upper())
+            elif "Is_Shortfall" in df_display.columns:
+                df_display["Status"] = df_display["Is_Shortfall"].apply(lambda x: "SHORTFALL" if x else "SURPLUS")
+            show_cols = [c for c in ["Month", "Projected_Income", "Essential_Expenses", "EMIs", "Total_Outflows", "Net_Surplus", "Status"] if c in df_display.columns]
+            st.dataframe(df_display[show_cols], use_container_width=True)
 
     # ---------------- TAB 2: MONTE CARLO (1,000 RUNS) ----------------
     with tab_montecarlo:
