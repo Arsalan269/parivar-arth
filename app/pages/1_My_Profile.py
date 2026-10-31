@@ -1,9 +1,6 @@
 """
 My Household Profile & Onboarding Wizard for Parivar Arth.
-Includes:
-1. Non-skippable Onboarding Wizard with conditional family-structure validation.
-2. Versioned Profile Editing (closes old row via effective_to, inserts new via effective_from).
-3. 'What Changed' Audit History timeline.
+Aether FinTech Design System - Family Structure, Versioned Edits, and Audit Trail.
 """
 
 import os
@@ -23,7 +20,14 @@ from core.profile_service import (
     get_household_profile, save_initial_onboarding,
     update_obligation_versioned, update_income_versioned, get_version_history
 )
-from app.styles import apply_theme, render_header, render_footer, PRIMARY_TEAL, ACCENT_SAFFRON, TEXT_NAVY
+from app.styles import (
+    apply_theme, render_header, render_footer, render_metric_card,
+    render_sidebar_brand, render_sidebar_user,
+    PRIMARY_ACCENT, SECONDARY_ACCENT, SOFT_PURPLE,
+    TEXT_PRIMARY, TEXT_SECONDARY, BORDER_COLOR,
+    COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER,
+    PRIMARY_TEAL, ACCENT_SAFFRON, TEXT_NAVY
+)
 from app.components.formatters import format_inr
 
 INDIAN_STATES = [
@@ -39,11 +43,11 @@ def show_onboarding_wizard(user_id: int):
     """Render the step-by-step onboarding wizard for new households."""
     st.markdown(
         f"""
-        <div style="background-color: #E6F4F2; border-left: 4px solid {PRIMARY_TEAL}; padding: 14px; border-radius: 8px; margin-bottom: 1.5rem;">
-            <h4 style="margin: 0; color: {PRIMARY_TEAL};">Step 1: Household Financial Setup</h4>
-            <p style="margin: 0; font-size: 0.9rem; color: #334155;">
+        <div class="aether-card" style="margin-bottom: 1.5rem; border-left: 4px solid {PRIMARY_ACCENT};">
+            <h4 style="margin: 0; color: {TEXT_PRIMARY}; font-size: 1.15rem; font-weight: 700;">Step 1: Household Financial Profile</h4>
+            <p style="margin: 4px 0 0 0; font-size: 0.9rem; color: {TEXT_SECONDARY}; line-height: 1.5;">
                 Every rupee in Parivar Arth is tailored to your real family structure. 
-                Please enter your core monthly details below.
+                Please enter your core monthly details below to unlock forecasts.
             </p>
         </div>
         """,
@@ -52,7 +56,7 @@ def show_onboarding_wizard(user_id: int):
 
     with st.form("onboarding_wizard_form", clear_on_submit=False):
         # Section 1: Location & Household Size
-        st.subheader("1. Household & Geography")
+        st.markdown(f"#### 1. Household & Geography")
         col1, col2 = st.columns(2)
         with col1:
             state = st.selectbox("State of Residence", options=INDIAN_STATES, index=0)
@@ -61,10 +65,10 @@ def show_onboarding_wizard(user_id: int):
         
         hh_size = st.number_input("Household Size (Total members living together)", min_value=1, max_value=20, value=3)
 
-        st.markdown("---")
+        st.markdown("<hr style='border: none; border-top: 1px solid #E9EAF0; margin: 1.25rem 0;'>", unsafe_allow_html=True)
 
         # Section 2: Family Structure
-        st.subheader("2. Family Members")
+        st.markdown(f"#### 2. Family Members")
         st.caption("Add dependents to enable personalized education and healthcare inflation planning.")
         
         col_f1, col_f2 = st.columns(2)
@@ -75,10 +79,10 @@ def show_onboarding_wizard(user_id: int):
             parents_count = st.number_input("Number of Dependent Parents", min_value=0, max_value=4, value=0)
             parent_chronic = st.checkbox("Any parent with chronic health condition (Diabetes, Cardiac, etc.)", value=False)
 
-        st.markdown("---")
+        st.markdown("<hr style='border: none; border-top: 1px solid #E9EAF0; margin: 1.25rem 0;'>", unsafe_allow_html=True)
 
         # Section 3: Monthly Incomes
-        st.subheader("3. Earners & Monthly Income")
+        st.markdown(f"#### 3. Earners & Monthly Income")
         col_inc1, col_inc2 = st.columns(2)
         with col_inc1:
             primary_income = st.number_input("Primary Earner Monthly Take-Home (₹)", min_value=1000, value=75000, step=5000, help="Net take-home cash income.")
@@ -86,10 +90,10 @@ def show_onboarding_wizard(user_id: int):
         with col_inc2:
             secondary_income = st.number_input("Secondary Earner Monthly Income (₹)", min_value=0, value=0, step=5000)
 
-        st.markdown("---")
+        st.markdown("<hr style='border: none; border-top: 1px solid #E9EAF0; margin: 1.25rem 0;'>", unsafe_allow_html=True)
 
         # Section 4: Mandatory Core Expenses
-        st.subheader("4. Mandatory Core Expenses")
+        st.markdown(f"#### 4. Mandatory Core Expenses")
         col_exp1, col_exp2 = st.columns(2)
         with col_exp1:
             rent_emi = st.number_input("Monthly Rent or Housing EMI (₹)", min_value=0, value=22000, step=1000, help="Enter 0 if family-owned ancestral home without loan.")
@@ -98,10 +102,10 @@ def show_onboarding_wizard(user_id: int):
             utilities = st.number_input("Monthly Utilities (₹)", min_value=0, value=4500, step=500, help="Electricity, LPG cylinders, water bills, piped gas.")
             commute = st.number_input("Monthly Commute & Fuel (₹)", min_value=0, value=4000, step=500, help="Petrol, diesel, metro, bus, auto fares.")
 
-        st.markdown("---")
+        st.markdown("<hr style='border: none; border-top: 1px solid #E9EAF0; margin: 1.25rem 0;'>", unsafe_allow_html=True)
 
         # Section 5: Conditional Expenses
-        st.subheader("5. Dependent Expenses (Conditional)")
+        st.markdown(f"#### 5. Dependent Expenses (Conditional)")
         
         child_fees = 0
         if children_count > 0:
@@ -113,10 +117,10 @@ def show_onboarding_wizard(user_id: int):
             st.markdown("##### Parents' Medical Provision (Mandatory as parents were added)")
             parent_medical = st.number_input("Monthly Medicines & Doctor Consultations (₹)", min_value=100, value=5000, step=500)
 
-        st.markdown("---")
+        st.markdown("<hr style='border: none; border-top: 1px solid #E9EAF0; margin: 1.25rem 0;'>", unsafe_allow_html=True)
 
         # Section 6: Existing Loans & Savings
-        st.subheader("6. Loans & Liquid Assets (Optional but Recommended)")
+        st.markdown(f"#### 6. Loans & Liquid Assets")
         col_ln1, col_ln2 = st.columns(2)
         with col_ln1:
             loan_balance = st.number_input("Total Outstanding Loan Balance (₹)", min_value=0, value=0, step=25000)
@@ -128,7 +132,6 @@ def show_onboarding_wizard(user_id: int):
         submit_onboarding = st.form_submit_button("Complete Onboarding & Save Profile", type="primary", use_container_width=True)
 
         if submit_onboarding:
-            # Construct structures
             members_list = [{"name": "Self", "relation": "Self", "age": 35}]
             if spouse_present:
                 members_list.append({"name": "Spouse", "relation": "Spouse", "age": 33})
@@ -194,20 +197,56 @@ def show_active_profile(user_id: int):
     assets = data["assets"]
     help_recs = data["household_help"]
 
-    tab_overview, tab_edit, tab_history = st.tabs(["Active Household Plan", "Edit & Version Expenses", "What Changed (Audit Trail)"])
+    # Compute key figures
+    total_income = sum(float(getattr(i, "amount", 0.0)) for i in incomes)
+    total_fixed = sum(float(getattr(o, "amount", 0.0)) for o in obligations)
+    total_emis = sum(float(getattr(l, "emi", 0.0)) for l in loans)
+
+    # Metric Cards Top Banner
+    col_m1, col_m2, col_m3 = st.columns(3)
+    with col_m1:
+        render_metric_card(
+            label="Total Monthly Inflow",
+            value=format_inr(total_income),
+            subtext="Combined household income",
+            badge_text="Inflows",
+            badge_type="purple"
+        )
+    with col_m2:
+        render_metric_card(
+            label="Essential Obligations",
+            value=format_inr(total_fixed),
+            subtext="Rent, food, utilities & commute",
+            badge_text="Outflows",
+            badge_type="watch"
+        )
+    with col_m3:
+        render_metric_card(
+            label="Debt Commitments",
+            value=format_inr(total_emis),
+            subtext="Monthly loan & EMI servicing",
+            badge_text="EMIs",
+            badge_type="risk" if total_emis > total_income * 0.4 else "safe"
+        )
+
+    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+
+    tab_overview, tab_edit, tab_history = st.tabs([
+        "Active Household Profile",
+        "Edit & Version Expenses",
+        "Audit Trail (What Changed)"
+    ])
 
     # ---------------- TAB 1: OVERVIEW ----------------
     with tab_overview:
-        col_m1, col_m2 = st.columns(2)
-        total_income = sum(i.amount for i in incomes)
-        total_fixed = sum(o.amount for o in obligations)
-
-        with col_m1:
-            st.metric("Total Monthly Household Inflow", format_inr(total_income))
-        with col_m2:
-            st.metric("Monthly Essential Obligations", format_inr(total_fixed))
-
-        st.markdown("#### Family Composition")
+        st.markdown(
+            f"""
+            <div style="margin-top: 0.5rem; margin-bottom: 1rem;">
+                <h4 style="color: {TEXT_PRIMARY}; font-weight: 700; margin: 0;">Family Composition</h4>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         member_df = pd.DataFrame([{
             "Name": m.name,
             "Relation": m.relation,
@@ -216,21 +255,35 @@ def show_active_profile(user_id: int):
         } for m in members])
         st.dataframe(member_df, use_container_width=True)
 
-        st.markdown("#### Monthly Income Sources")
+        st.markdown(
+            f"""
+            <div style="margin-top: 1.25rem; margin-bottom: 0.75rem;">
+                <h4 style="color: {TEXT_PRIMARY}; font-weight: 700; margin: 0;">Monthly Income Sources</h4>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         inc_df = pd.DataFrame([{
             "Source": i.source_type,
             "Monthly Amount": format_inr(i.amount),
             "Type": "Variable (Gig/Biz)" if i.is_variable else "Fixed Salary",
-            "Effective Since": i.effective_from.strftime("%d %b %Y")
+            "Effective Since": i.effective_from.strftime("%d %b %Y") if getattr(i, "effective_from", None) else "-"
         } for i in incomes])
         st.dataframe(inc_df, use_container_width=True)
 
-        st.markdown("#### Active Essential Obligations")
+        st.markdown(
+            f"""
+            <div style="margin-top: 1.25rem; margin-bottom: 0.75rem;">
+                <h4 style="color: {TEXT_PRIMARY}; font-weight: 700; margin: 0;">Active Essential Obligations</h4>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         ob_df = pd.DataFrame([{
             "Category": o.category,
             "Amount": format_inr(o.amount),
             "Frequency": o.frequency,
-            "Effective Since": o.effective_from.strftime("%d %b %Y")
+            "Effective Since": o.effective_from.strftime("%d %b %Y") if getattr(o, "effective_from", None) else "-"
         } for o in obligations])
         st.dataframe(ob_df, use_container_width=True)
 
@@ -238,16 +291,20 @@ def show_active_profile(user_id: int):
     with tab_edit:
         st.markdown(
             f"""
-            <div style="background-color: #FEF3C7; border-left: 4px solid {ACCENT_SAFFRON}; padding: 10px 14px; border-radius: 6px; font-size: 0.85rem; color: #78350F; margin-bottom: 1rem;">
-                <strong>Versioning Guarantee:</strong> Profile edits never overwrite historical data. 
-                Modifying rent or groceries closes the previous record and inserts a new version effective today.
+            <div class="aether-card" style="margin-bottom: 1.25rem; padding: 1rem 1.25rem;">
+                <div style="font-weight: 700; color: {PRIMARY_ACCENT}; font-size: 0.92rem; margin-bottom: 2px;">
+                    Immutable Versioning Guarantee
+                </div>
+                <div style="font-size: 0.88rem; color: {TEXT_SECONDARY}; line-height: 1.5;">
+                    Profile edits never overwrite historical data. Modifying rent or groceries closes the previous record and inserts a new version effective today.
+                </div>
             </div>
             """,
             unsafe_allow_html=True
         )
 
         edit_choice = st.selectbox(
-            "Select Item to Update:",
+            "Select Financial Item to Update:",
             options=[o.category for o in obligations] + [f"Income: {i.source_type}" for i in incomes]
         )
 
@@ -256,7 +313,7 @@ def show_active_profile(user_id: int):
                 source_type = edit_choice.replace("Income: ", "")
                 target_inc = next((i for i in incomes if i.source_type == source_type), None)
                 curr_val = target_inc.amount if target_inc else 0.0
-                new_amt = st.number_input(f"New Monthly Income for {source_type} (₹)", min_value=0.0, value=float(curr_val), step=1000.0)
+                new_amt = st.number_input(f"New Monthly Amount for {source_type} (₹)", min_value=0.0, value=float(curr_val), step=1000.0)
                 is_var = st.checkbox("Is Income Variable", value=target_inc.is_variable if target_inc else False)
                 save_edit = st.form_submit_button("Save New Income Version", type="primary")
 
@@ -279,8 +336,15 @@ def show_active_profile(user_id: int):
 
     # ---------------- TAB 3: AUDIT HISTORY ----------------
     with tab_history:
-        st.markdown("#### Chronological 'What Changed' Audit Trail")
-        st.caption("Complete audit of all active and superseded financial versions.")
+        st.markdown(
+            f"""
+            <div style="margin-top: 0.5rem; margin-bottom: 1rem;">
+                <h4 style="color: {TEXT_PRIMARY}; font-weight: 700; margin: 0;">Chronological Audit Trail</h4>
+                <p style="color: {TEXT_SECONDARY}; font-size: 0.88rem; margin: 2px 0 0 0;">Complete audit trail of all historical and active financial records.</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         if history:
             hist_df = pd.DataFrame(history)
             hist_df["Formatted Amount"] = hist_df["amount"].apply(lambda x: format_inr(x))
@@ -291,18 +355,34 @@ def show_active_profile(user_id: int):
 
 
 def show_my_profile_page():
-    st.set_page_config(page_title="My Household Profile - Parivar Arth", page_icon=None, layout="centered")
+    st.set_page_config(
+        page_title="My Profile - Parivar Arth",
+        page_icon=None,
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
     apply_theme()
     touch_session()
 
-    user_id = get_current_user_id()
+    render_sidebar_brand()
+
+    user_data = st.session_state.get("user")
+    user_id = user_data["user_id"] if user_data else get_current_user_id()
     if not user_id:
         st.warning("Please sign in from the Home page to view your profile.")
         st.stop()
 
+    with st.sidebar:
+        user_name = user_data.get("name", "Household Account") if user_data else "User"
+        render_sidebar_user(username=user_name, role="Primary Account")
+        if st.button("Sign Out", key="prof_logout_btn", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
+
     render_header(
         title="My Household Financial Profile",
-        subtitle="Versioned profile engine with family structure-driven obligations"
+        subtitle="Versioned profile engine with family structure-driven obligations",
+        tag="Profile"
     )
 
     with get_db_session() as db:

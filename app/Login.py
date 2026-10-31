@@ -1,6 +1,6 @@
 """
-Parivar Arth (Family Money Planner) - Login & Household Overview.
-Multi-user personal finance planner for Indian households.
+Parivar Arth - Family Financial Intelligence Platform
+Aether FinTech Design System - Login & Household Overview.
 """
 
 import os
@@ -16,15 +16,21 @@ from core.db import init_db, get_db_session
 from core.models import User, Profile
 from core.auth import is_session_timed_out
 from core.security import touch_session, get_current_user_id
-from app.styles import apply_theme, render_header, render_footer, PRIMARY_TEAL, ACCENT_SAFFRON
+from app.styles import (
+    apply_theme, render_header, render_footer, render_metric_card,
+    render_sidebar_brand, render_sidebar_user,
+    PRIMARY_ACCENT, SECONDARY_ACCENT, SOFT_PURPLE,
+    TEXT_PRIMARY, TEXT_SECONDARY, BORDER_COLOR,
+    COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER
+)
 from app.components.auth_forms import render_auth_tabs
 
 
 def main():
     st.set_page_config(
-        page_title="Login - Parivar Arth",
+        page_title="Parivar Arth - Family Financial Intelligence",
         page_icon=None,
-        layout="centered",
+        layout="wide",
         initial_sidebar_state="expanded"
     )
 
@@ -40,7 +46,7 @@ def main():
             except Exception:
                 pass
 
-    # Apply Indian Warmth theme styling
+    # Apply Aether theme styling
     apply_theme()
 
     # 1. Session timeout check (20-minute threshold)
@@ -53,26 +59,41 @@ def main():
         else:
             touch_session()
 
+    # Always render clean sidebar brand
+    render_sidebar_brand()
+
     # 2. Authentication Gate
     user_data = st.session_state.get("user")
     if not user_data:
         render_header(
-            title="Parivar Arth - Family Money Planner",
-            subtitle="Personal finance and inflation-adjusted budget planner for Indian families"
+            title="Parivar Arth",
+            subtitle="Family Financial Planning & Intelligence Platform",
+            tag="Aether FinTech"
         )
+
         st.markdown(
             f"""
-            <div style="background-color: #E6F4F2; border-left: 4px solid {PRIMARY_TEAL}; padding: 12px 16px; border-radius: 8px; margin-bottom: 1.5rem;">
-                <strong style="color: {PRIMARY_TEAL};">Prices keep rising, but family budgets do not adjust in time.</strong><br>
-                <span style="font-size: 0.9rem; color: #334155;">
-                Parivar Arth forecasts category-wise Indian inflation (groceries, school fees, medical care, rent, fuel) 
-                and shows your household's future costs, shortfall risks, and savings opportunities in advance.
-                </span>
+            <div class="aether-glass-card" style="margin-bottom: 2rem;">
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <div style="font-size: 1.15rem; font-weight: 700; color: {TEXT_PRIMARY};">
+                        Anticipate Inflation. Secure Household Cash Flow.
+                    </div>
+                    <div style="font-size: 0.92rem; color: {TEXT_SECONDARY}; line-height: 1.6;">
+                        Parivar Arth is a multi-user financial intelligence platform engineered for Indian households.
+                        It projects category-wise inflation (groceries, school fees, healthcare, rent, energy), runs 1,000 Monte Carlo simulations,
+                        and highlights cash-flow shortfall months up to 24 months in advance.
+                    </div>
+                </div>
             </div>
             """,
             unsafe_allow_html=True
         )
-        render_auth_tabs()
+
+        # Center auth form container
+        auth_col1, auth_col2, auth_col3 = st.columns([1, 2.5, 1])
+        with auth_col2:
+            render_auth_tabs()
+
         render_footer()
         st.stop()
 
@@ -80,12 +101,10 @@ def main():
     user_id = user_data["user_id"]
     user_name = user_data["name"]
 
-    # Sidebar Profile & Logout
+    # Sidebar User Profile & Actions
     with st.sidebar:
-        st.markdown(f"### {user_name}")
-        st.caption(f"{user_data['email']} • Household Account")
-
-        if st.button("Log Out", use_container_width=True):
+        render_sidebar_user(username=user_name, role="Primary Account")
+        if st.button("Sign Out", use_container_width=True):
             st.session_state.clear()
             st.rerun()
 
@@ -96,15 +115,23 @@ def main():
 
     if not is_onboarded:
         render_header(
-            title=f"Welcome, {user_name}!",
-            subtitle="Step 1 of 1: Complete your household financial profile to unlock forecasts & planning"
+            title=f"Welcome, {user_name}",
+            subtitle="Complete your household profile to initialize inflation forecasts and shortfall projections",
+            tag="Onboarding Required"
         )
-        st.info("Welcome to Parivar Arth. Before we can calculate your personalized inflation projection, please complete your mandatory household profile. Navigate to 'My Household Profile' from the sidebar.")
-        
+
         st.markdown(
             f"""
-            <div style="text-align: center; padding: 2rem 1rem;">
-                <p style="color: #64748B;">Please proceed to <strong>'My Household Profile'</strong> from the navigation sidebar to enter family members, monthly earnings, rent/EMI, and grocery estimates.</p>
+            <div class="aether-card" style="text-align: center; padding: 2.5rem 1.5rem;">
+                <div style="font-size: 1.25rem; font-weight: 700; color: {TEXT_PRIMARY}; margin-bottom: 0.5rem;">
+                    Household Setup Needed
+                </div>
+                <div style="color: {TEXT_SECONDARY}; font-size: 0.95rem; max-width: 540px; margin: 0 auto 1.5rem auto; line-height: 1.6;">
+                    To calculate your family's customized inflation rate, emergency fund target, and 24-month cash flow trajectory, please set up your household profile.
+                </div>
+                <div style="display: inline-block; background-color: {SOFT_PURPLE}; color: {PRIMARY_ACCENT}; padding: 8px 18px; border-radius: 9999px; font-weight: 600; font-size: 0.88rem;">
+                    Open "My Profile" from the sidebar navigation to get started
+                </div>
             </div>
             """,
             unsafe_allow_html=True
@@ -112,10 +139,11 @@ def main():
         render_footer()
         st.stop()
 
-    # 5. Welcome Dashboard
+    # 5. Welcome Dashboard (Authenticated Overview)
     render_header(
-        title=f"Welcome, {user_name}!",
-        subtitle="Here is your family's financial health summary"
+        title=f"Welcome back, {user_name}",
+        subtitle="Household Financial Intelligence & Cash Flow Overview",
+        tag="Active Plan"
     )
 
     # Compute high-level snapshot for user
@@ -133,7 +161,7 @@ def main():
             for a in h_data.get("assets", [])
             if getattr(a, "is_liquid", False)
         )
-        
+
         # Calculate runway
         monthly_burn = total_obligations + total_emis
         has_var_inc = any(bool(getattr(inc, "is_variable", False)) for inc in h_data.get("incomes", []))
@@ -147,89 +175,168 @@ def main():
         )
         runway_months = ef_info.get("runway_months", 0.0)
 
-    # 4 Quick Metric Cards
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        st.metric("Monthly Income", format_inr(total_income))
-    with c2:
-        st.metric("Essential Outflows", format_inr(monthly_burn))
-    with c3:
-        st.metric("Liquid Emergency Fund", format_inr(total_liquid_savings))
-    with c4:
-        st.metric("Emergency Runway", f"{runway_months:.1f} Months")
+    # 4 Aether Metric Cards
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        render_metric_card(
+            label="Monthly Income",
+            value=format_inr(total_income),
+            subtext="Combined household inflows",
+            badge_text="Inflows",
+            badge_type="purple"
+        )
+    with m2:
+        render_metric_card(
+            label="Essential Outflows",
+            value=format_inr(monthly_burn),
+            subtext="Fixed obligations + loan EMIs",
+            badge_text="Outflows",
+            badge_type="watch" if monthly_burn > total_income * 0.7 else "safe"
+        )
+    with m3:
+        render_metric_card(
+            label="Liquid Reserves",
+            value=format_inr(total_liquid_savings),
+            subtext="Readily accessible savings & FDs",
+            badge_text="Emergency Fund",
+            badge_type="safe" if runway_months >= 6 else "watch"
+        )
+    with m4:
+        runway_badge = "safe" if runway_months >= 6 else ("watch" if runway_months >= 3 else "risk")
+        render_metric_card(
+            label="Emergency Runway",
+            value=f"{runway_months:.1f} Mo",
+            subtext="Coverage at current burn rate",
+            badge_text=runway_badge.upper(),
+            badge_type=runway_badge
+        )
 
     # Risk Status Banner
     if runway_months >= 6:
-        status_html = '<div style="background-color: #DCFCE7; border: 1px solid #86EFAC; border-radius: 10px; padding: 12px 16px; margin: 1rem 0;"><strong style="color: #15803D;">Financial Stance: SAFE</strong> - Your family has healthy emergency reserves (> 6 months runway).</div>'
+        banner_border = "#A7F3D0"
+        banner_bg = "#E6F8F3"
+        banner_title = "Financial Health: Robust Emergency Runway"
+        banner_color = COLOR_SUCCESS
+        banner_text = f"Your household holds {runway_months:.1f} months of essential runway in liquid reserves. Your family is well-cushioned against unexpected shocks."
     elif runway_months >= 3:
-        status_html = '<div style="background-color: #FEF3C7; border: 1px solid #FDE68A; border-radius: 10px; padding: 12px 16px; margin: 1rem 0;"><strong style="color: #B45309;">Financial Stance: WATCH</strong> - Emergency runway is between 3 to 6 months. Maintain budget discipline.</div>'
+        banner_border = "#FDE68A"
+        banner_bg = "#FFFBEB"
+        banner_title = "Financial Health: Moderate Watch State"
+        banner_color = COLOR_WARNING
+        banner_text = f"Your household runway is {runway_months:.1f} months. Build reserves toward the 6-month threshold before taking on discretionary commitments."
     else:
-        status_html = '<div style="background-color: #FEE2E2; border: 1px solid #FCA5A5; border-radius: 10px; padding: 12px 16px; margin: 1rem 0;"><strong style="color: #B91C1C;">Financial Stance: AT RISK</strong> - Emergency runway is under 3 months. Review expense reduction levers.</div>'
-    
-    st.markdown(status_html, unsafe_allow_html=True)
+        banner_border = "#FECACA"
+        banner_bg = "#FEF2F2"
+        banner_title = "Financial Health: Elevated Shortfall Risk"
+        banner_color = COLOR_DANGER
+        banner_text = f"Current runway is {runway_months:.1f} months, which is below the recommended safety buffer. Explore the 'Reduce Expenses' section to shore up cash flow."
 
-    # Quick Feature Links Cards
-    st.markdown("### Key Planning Features")
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.markdown(
-            f"""
-            <div class="parivar-card">
-                <h4 style="margin-top: 0; color: #0F766E;">Future Shortfall Predictor</h4>
-                <p style="font-size: 0.9rem; color: #475569;">
-                    See the exact month your household might face a cash-flow gap with 24-month compounding inflation and 1,000-run Monte Carlo simulation.
-                </p>
-                <p style="font-size: 0.85rem; color: #0F766E; font-weight: 600;">Navigate to Future Planner in sidebar</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        st.markdown(
-            f"""
-            <div class="parivar-card">
-                <h4 style="margin-top: 0; color: #0F766E;">12-Month Sinking Funds</h4>
-                <p style="font-size: 0.9rem; color: #475569;">
-                    Convert irregular annual spikes (school admission fees, festivals, insurance) into manageable monthly reserves.
-                </p>
-                <p style="font-size: 0.85rem; color: #0F766E; font-weight: 600;">Navigate to Yearly Calendar in sidebar</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-    with col_b:
-        st.markdown(
-            f"""
-            <div class="parivar-card">
-                <h4 style="margin-top: 0; color: #0F766E;">Reduce Necessary Expenses</h4>
-                <p style="font-size: 0.9rem; color: #475569;">
-                    Actionable, dignified levers to trim rent, electricity slab tariffs, fuel, grocery substitutes, and OTT subscriptions.
-                </p>
-                <p style="font-size: 0.85rem; color: #0F766E; font-weight: 600;">Navigate to Reduce Expenses in sidebar</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-        st.markdown(
-            f"""
-            <div class="parivar-card">
-                <h4 style="margin-top: 0; color: #0F766E;">Download Health Reports</h4>
-                <p style="font-size: 0.9rem; color: #475569;">
-                    Export your complete 24-month inflation trajectory to an official executive PDF or multi-tab Excel workbook with one click.
-                </p>
-                <p style="font-size: 0.85rem; color: #0F766E; font-weight: 600;">Navigate to Reports in sidebar</p>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
-
-    # Indian Household Context Tip
     st.markdown(
-        """
-        <div style="background-color: #F8FAFC; border-left: 4px solid #F59E0B; padding: 12px 16px; border-radius: 8px; margin-top: 0.5rem; margin-bottom: 1.5rem;">
-            <strong style="color: #B45309;">Indian Family Budget Note:</strong><br>
-            <span style="font-size: 0.9rem; color: #334155;">
-            In India, food and fuel carry the highest month-to-month volatility, while education fees and healthcare rise at structural rates of 8% to 12% annually. Parivar Arth projects these separately so your children's schooling and parents' medical care are never under-budgeted.
-            </span>
+        f"""
+        <div style="background-color: {banner_bg}; border: 1px solid {banner_border}; border-radius: 14px; padding: 14px 18px; margin: 1.5rem 0;">
+            <div style="font-weight: 700; color: {banner_color}; font-size: 0.95rem; margin-bottom: 2px;">{banner_title}</div>
+            <div style="font-size: 0.88rem; color: {TEXT_PRIMARY}; line-height: 1.5;">{banner_text}</div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    # Feature Grid Cards
+    st.markdown(
+        f"""
+        <div style="margin-top: 1.5rem; margin-bottom: 0.75rem;">
+            <h3 style="font-size: 1.25rem; font-weight: 700; color: {TEXT_PRIMARY}; margin: 0;">Planning Modules</h3>
+            <p style="font-size: 0.85rem; color: {TEXT_SECONDARY}; margin: 2px 0 0 0;">Navigate using the sidebar to explore each financial module</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+    f_col1, f_col2 = st.columns(2)
+    with f_col1:
+        st.markdown(
+            f"""
+            <div class="aether-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="font-weight: 700; color: {TEXT_PRIMARY}; font-size: 1.05rem;">Future Shortfall Predictor</div>
+                    <span class="status-badge status-purple">Monte Carlo</span>
+                </div>
+                <div style="font-size: 0.88rem; color: {TEXT_SECONDARY}; line-height: 1.5; margin-bottom: 12px;">
+                    Simulate 24 months of multi-category Indian inflation across 1,000 probabilistic scenarios. Pinpoint the exact month a deficit might occur.
+                </div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: {PRIMARY_ACCENT};">
+                    Open "Future Planner" in sidebar &rarr;
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            f"""
+            <div class="aether-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="font-weight: 700; color: {TEXT_PRIMARY}; font-size: 1.05rem;">12-Month Sinking Funds</div>
+                    <span class="status-badge status-safe">Cash Flow</span>
+                </div>
+                <div style="font-size: 0.88rem; color: {TEXT_SECONDARY}; line-height: 1.5; margin-bottom: 12px;">
+                    Smooth out high-expense spikes such as school admissions, festive purchases, and insurance renewals into steady monthly allocations.
+                </div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: {PRIMARY_ACCENT};">
+                    Open "Yearly Calendar" in sidebar &rarr;
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    with f_col2:
+        st.markdown(
+            f"""
+            <div class="aether-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="font-weight: 700; color: {TEXT_PRIMARY}; font-size: 1.05rem;">Actionable Expense Levers</div>
+                    <span class="status-badge status-watch">Optimization</span>
+                </div>
+                <div style="font-size: 0.88rem; color: {TEXT_SECONDARY}; line-height: 1.5; margin-bottom: 12px;">
+                    Implement realistic, dignified strategies across electricity slab tariffs, fuel routes, grocery substitutes, and OTT audits to reclaim cash flow.
+                </div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: {PRIMARY_ACCENT};">
+                    Open "Reduce Expenses" in sidebar &rarr;
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        st.markdown(
+            f"""
+            <div class="aether-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <div style="font-weight: 700; color: {TEXT_PRIMARY}; font-size: 1.05rem;">Executive Reports</div>
+                    <span class="status-badge status-purple">Export</span>
+                </div>
+                <div style="font-size: 0.88rem; color: {TEXT_SECONDARY}; line-height: 1.5; margin-bottom: 12px;">
+                    Generate comprehensive PDF summary statements and multi-sheet Excel workbooks with a single click for loan applications or family reviews.
+                </div>
+                <div style="font-size: 0.82rem; font-weight: 600; color: {PRIMARY_ACCENT};">
+                    Open "Reports" in sidebar &rarr;
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+    # Indian Context Insight Callout
+    st.markdown(
+        f"""
+        <div style="background-color: {BG_CARD}; border: 1px solid {BORDER_COLOR}; border-radius: 14px; padding: 16px 20px; margin-top: 1rem; margin-bottom: 1.5rem;">
+            <div style="font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: {PRIMARY_ACCENT}; margin-bottom: 4px;">
+                FinTech Insight: Multi-Tier Inflation Dynamics
+            </div>
+            <div style="font-size: 0.88rem; color: {TEXT_SECONDARY}; line-height: 1.6;">
+                General CPI fails to capture the true cost-of-living increase for middle-class Indian families.
+                While consumer electronics often experience low inflation, essential services such as private schooling (8-12% annual rise)
+                and specialized healthcare (10-14% annual rise) outpace standard wage increases. Parivar Arth projects these separately to safeguard your long-term goals.
+            </div>
         </div>
         """,
         unsafe_allow_html=True

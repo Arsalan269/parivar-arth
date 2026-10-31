@@ -1,7 +1,6 @@
 """
-Future Planner, Shortfall Predictor & Monte Carlo Simulation for Parivar Arth.
-The flagship engine: combines category-specific ML forecasts, 1,000-run Monte Carlo simulations,
-what-if shocks, and family milestone projections.
+Future Planner & Financial Intelligence Engine for Parivar Arth.
+Aether FinTech Design System - Predictive Shortfall, 1,000-Run Monte Carlo, and Goal Milestones.
 """
 
 import os
@@ -9,7 +8,6 @@ import sys
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import plotly.express as px
 from datetime import date
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -23,39 +21,62 @@ from core.profile_service import get_household_profile
 from planner.shortfall import compute_shortfall_timeline
 from planner.montecarlo import run_monte_carlo_shortfall_simulation
 from planner.family_goals import compute_education_milestones, evaluate_parent_medical_provision
-from app.styles import apply_theme, render_header, render_footer, PRIMARY_TEAL, ACCENT_SAFFRON, TEXT_NAVY
+from app.styles import (
+    apply_theme, render_header, render_footer, render_metric_card,
+    render_sidebar_brand, render_sidebar_user, apply_aether_chart_theme,
+    PRIMARY_ACCENT, SECONDARY_ACCENT, SOFT_PURPLE,
+    TEXT_PRIMARY, TEXT_SECONDARY, BORDER_COLOR,
+    COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER,
+    PRIMARY_TEAL, ACCENT_SAFFRON, TEXT_NAVY
+)
 from app.components.formatters import format_inr, format_pct
 
 
 def show_future_planner_page():
-    st.set_page_config(page_title="Future Planner & Shortfall Engine - Parivar Arth", page_icon=None, layout="centered")
+    st.set_page_config(
+        page_title="Future Planner - Parivar Arth",
+        page_icon=None,
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
     apply_theme()
     touch_session()
 
-    user_id = get_current_user_id()
+    render_sidebar_brand()
+
+    user_data = st.session_state.get("user")
+    user_id = user_data["user_id"] if user_data else get_current_user_id()
     if not user_id:
-        st.warning("Please sign in to view your family's future inflation and shortfall projections.")
+        st.warning("Please sign in to access the Future Planner engine.")
         st.stop()
 
+    with st.sidebar:
+        user_name = user_data.get("name", "Household Account") if user_data else "User"
+        render_sidebar_user(username=user_name, role="Primary Account")
+        if st.button("Sign Out", key="fp_logout_btn", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
+
     render_header(
-        title="Future Shortfall Predictor",
-        subtitle="Forecasted category inflation applied to your real household finances"
+        title="Future Planner & Intelligence Engine",
+        subtitle="Multi-category compounded inflation, 1,000-run Monte Carlo projections, and family milestones",
+        tag="Predictive AI"
     )
 
     with get_db_session() as db:
         profile_data = get_household_profile(db, user_id)
         forecast_rows = db.query(Forecast).all()
 
-    incomes = profile_data["incomes"]
-    obligations = profile_data["obligations"]
-    loans = profile_data["loans"]
-    members = profile_data["members"]
-    assets = profile_data["assets"]
+    incomes = profile_data.get("incomes", [])
+    obligations = profile_data.get("obligations", [])
+    loans = profile_data.get("loans", [])
+    members = profile_data.get("members", [])
+    assets = profile_data.get("assets", [])
 
-    total_income = sum(i.amount for i in incomes)
-    monthly_emis = sum(l.emi for l in loans)
-    liquid_reserves = sum(a.amount for a in assets if a.is_liquid)
-    obligation_dicts = [{"category": o.category, "amount": o.amount} for o in obligations]
+    total_income = sum(float(getattr(i, "amount", 0.0)) for i in incomes)
+    monthly_emis = sum(float(getattr(l, "emi", 0.0)) for l in loans)
+    liquid_reserves = sum(float(getattr(a, "amount", 0.0)) for a in assets if getattr(a, "is_liquid", False))
+    obligation_dicts = [{"category": getattr(o, "category", "Other"), "amount": float(getattr(o, "amount", 0.0))} for o in obligations]
 
     # Map forecast intervals per category
     category_intervals = {}
@@ -63,20 +84,91 @@ def show_future_planner_page():
         if f.category not in category_intervals:
             category_intervals[f.category] = (f.lower_ci, f.predicted_inflation, f.upper_ci)
 
+    # Initial snapshot computation with baseline assumptions
+    base_shortfall = compute_shortfall_timeline(
+        current_monthly_income=total_income,
+        obligations=obligation_dicts,
+        monthly_emis=monthly_emis,
+        annual_income_increment_pct=6.0,
+        min_savings_target_pct=10.0,
+        horizon_months=24
+    )
+
+    # Top Overview Metric Cards
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        current_surplus = base_shortfall["current_surplus"]
+        render_metric_card(
+            label="Current Monthly Surplus",
+            value=format_inr(current_surplus),
+            subtext="Inflows minus total monthly burn",
+            badge_text="Surplus" if current_surplus >= 0 else "Deficit",
+            badge_type="safe" if current_surplus >= 0 else "risk"
+        )
+    with m2:
+        m24_burn = base_shortfall["timeline_df"]["Total_Outflows"].iloc[-1] if not base_shortfall["timeline_df"].empty else 0
+        render_metric_card(
+            label="Projected Burn (Month 24)",
+            value=format_inr(m24_burn),
+            subtext="Compounded at category inflation",
+            badge_text="Inflated",
+            badge_type="watch"
+        )
+    with m3:
+        sf_month = base_shortfall.get("shortfall_month")
+        sf_badge = f"Month {sf_month}" if sf_month else "Zero Deficit"
+        render_metric_card(
+            label="Cash Flow Horizon",
+            value=sf_badge,
+            subtext="First month of projected shortfall",
+            badge_text="Safe" if not sf_month else "Action Req.",
+            badge_type="safe" if not sf_month else "risk"
+        )
+    with m4:
+        surplus_24m = base_shortfall["surplus_24m"]
+        render_metric_card(
+            label="Net Surplus at M24",
+            value=format_inr(surplus_24m),
+            subtext="With 6% salary hike assumption",
+            badge_text="Healthy" if surplus_24m > 0 else "Shortfall",
+            badge_type="safe" if surplus_24m > 0 else "risk"
+        )
+
+    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+
+    # Main Tabs
     tab_shortfall, tab_montecarlo, tab_whatif, tab_milestones = st.tabs([
         "24-Month Shortfall Timeline",
-        "Monte Carlo Risk (1,000 Runs)",
-        "What-If Scenarios & Shocks",
-        "Family Planning Milestones"
+        "Monte Carlo Volatility (1,000 Runs)",
+        "Stress Testing & What-If Shocks",
+        "Family Milestones & Life Goals"
     ])
 
     # ---------------- TAB 1: SHORTFALL TIMELINE ----------------
     with tab_shortfall:
-        col_ctrl1, col_ctrl2 = st.columns(2)
-        with col_ctrl1:
-            annual_hike = st.slider("Expected Annual Salary / Income Hike (%/year)", 0.0, 15.0, 6.0, 0.5)
-        with col_ctrl2:
-            min_savings = st.slider("Target Monthly Savings Reserve (% of income)", 0.0, 30.0, 10.0, 2.0)
+        st.markdown(
+            f"""
+            <div style="margin-top: 0.5rem; margin-bottom: 1.25rem;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: {TEXT_PRIMARY}; margin: 0;">24-Month Cash Flow Trajectory</h3>
+                <p style="font-size: 0.88rem; color: {TEXT_SECONDARY}; margin: 2px 0 0 0;">Interactive forward cash flow model adjusted for realistic Indian inflation</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        ctrl_col1, ctrl_col2 = st.columns(2)
+        with ctrl_col1:
+            annual_hike = st.slider(
+                "Expected Annual Income Hike (% / year)",
+                min_value=0.0, max_value=15.0, value=6.0, step=0.5,
+                help="Projected annual increment in primary & secondary household income."
+            )
+        with ctrl_col2:
+            min_savings = st.slider(
+                "Target Monthly Savings Reserve (% of monthly income)",
+                min_value=0.0, max_value=30.0, value=10.0, step=2.0,
+                help="Buffer percentage reserved before calculating net discretionary cash."
+            )
 
         shortfall_res = compute_shortfall_timeline(
             current_monthly_income=total_income,
@@ -87,34 +179,41 @@ def show_future_planner_page():
             horizon_months=24
         )
 
+        # Overview banner card
+        is_safe = shortfall_res["shortfall_month"] is None
+        banner_border = "#A7F3D0" if is_safe else "#FECACA"
+        banner_bg = "#E6F8F3" if is_safe else "#FEF2F2"
+        banner_color = COLOR_SUCCESS if is_safe else COLOR_DANGER
+
         st.markdown(
             f"""
-            <div style="background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin: 1rem 0; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h4 style="margin: 0; color: {PRIMARY_TEAL};">Household Shortfall Outlook</h4>
-                    <span style="font-size: 1.15rem; font-weight: bold;">{shortfall_res['badge']}</span>
+            <div class="aether-card" style="border-left: 4px solid {banner_color}; margin-top: 1rem; margin-bottom: 1.5rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <div style="font-size: 1.05rem; font-weight: 700; color: {TEXT_PRIMARY};">
+                        Shortfall Engine Diagnostic: {shortfall_res['badge']}
+                    </div>
+                    <span class="status-badge {'status-safe' if is_safe else 'status-at-risk'}">{shortfall_res['badge']}</span>
                 </div>
-                <p style="margin: 8px 0 0 0; color: #475569; font-size: 0.95rem; line-height: 1.4;">
+                <div style="font-size: 0.9rem; color: {TEXT_SECONDARY}; line-height: 1.5;">
                     {shortfall_res['explanation']}
-                </p>
-                {f'<div style="margin-top: 8px; color: #DC2626; font-weight: bold;">Month of Shortfall: Month {shortfall_res["shortfall_month"]} (Projected Monthly Deficit: ₹{shortfall_res["max_shortfall_amount"]:,.0f})</div>' if shortfall_res['shortfall_month'] else '<div style="margin-top: 8px; color: #16A34A; font-weight: bold;">No cash-flow shortfall detected within 24 months.</div>'}
+                </div>
             </div>
             """,
             unsafe_allow_html=True
         )
 
-        # Surplus cards across key milestones
+        # Milestone surplus progression metrics
         col_m1, col_m2, col_m3, col_m4, col_m5 = st.columns(5)
         with col_m1:
             st.metric("Surplus Today", format_inr(shortfall_res["current_surplus"]))
         with col_m2:
-            st.metric("In 6 Months", format_inr(shortfall_res["surplus_6m"]))
+            st.metric("At Month 6", format_inr(shortfall_res["surplus_6m"]))
         with col_m3:
-            st.metric("In 12 Months", format_inr(shortfall_res["surplus_12m"]))
+            st.metric("At Month 12", format_inr(shortfall_res["surplus_12m"]))
         with col_m4:
-            st.metric("In 18 Months", format_inr(shortfall_res["surplus_18m"]))
+            st.metric("At Month 18", format_inr(shortfall_res["surplus_18m"]))
         with col_m5:
-            st.metric("In 24 Months", format_inr(shortfall_res["surplus_24m"]))
+            st.metric("At Month 24", format_inr(shortfall_res["surplus_24m"]))
 
         # Chart: Income vs Compounded Outflows
         df_time = shortfall_res["timeline_df"]
@@ -122,40 +221,53 @@ def show_future_planner_page():
 
         fig_short.add_trace(go.Scatter(
             x=df_time["Month"], y=df_time["Projected_Income"],
-            mode="lines", name="Projected Income (with hikes)",
-            line=dict(color="#16A34A", width=3)
+            mode="lines+markers", name="Projected Income (with hikes)",
+            line=dict(color=COLOR_SUCCESS, width=3),
+            marker=dict(size=4)
         ))
         fig_short.add_trace(go.Scatter(
             x=df_time["Month"], y=df_time["Total_Outflows"],
             mode="lines", name="Essential Outflows (Compounded Inflation)",
-            line=dict(color="#DC2626", width=2.5, dash="dash")
+            line=dict(color=COLOR_DANGER, width=2.5, dash="dash")
         ))
         fig_short.add_trace(go.Bar(
             x=df_time["Month"], y=df_time["Net_Surplus"],
             name="Net Monthly Cash Flow",
-            marker_color=df_time["Net_Surplus"].apply(lambda x: "#86EFAC" if x >= 0 else "#FCA5A5"),
-            opacity=0.6
+            marker=dict(
+                color=df_time["Net_Surplus"].apply(lambda x: COLOR_SUCCESS if x >= 0 else COLOR_DANGER),
+                opacity=0.35
+            )
         ))
 
-        fig_short.update_layout(
-            title="24-Month Income vs. Inflation-Compounded Essential Outflows",
-            xaxis_title="Months Ahead",
-            yaxis_title="Monthly Amount (₹)",
-            template="plotly_white",
-            height=380,
-            margin=dict(l=20, r=20, t=50, b=20),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        apply_aether_chart_theme(
+            fig_short,
+            title="24-Month Income vs. Compounded Outflows vs. Net Surplus",
+            height=390
         )
+        fig_short.update_xaxes(title_text="Projection Horizon (Months)")
+        fig_short.update_yaxes(title_text="Amount in INR (₹)")
         st.plotly_chart(fig_short, use_container_width=True)
+
+        with st.expander("View Detailed Month-by-Month Cash Flow Table", expanded=False):
+            df_display = df_time.copy()
+            df_display["Projected_Income"] = df_display["Projected_Income"].apply(format_inr)
+            df_display["Total_Outflows"] = df_display["Total_Outflows"].apply(format_inr)
+            df_display["Net_Surplus"] = df_display["Net_Surplus"].apply(format_inr)
+            df_display["Status"] = df_display["Status"].apply(lambda s: s.upper())
+            st.dataframe(df_display, use_container_width=True)
 
     # ---------------- TAB 2: MONTE CARLO (1,000 RUNS) ----------------
     with tab_montecarlo:
-        st.markdown("#### 1,000-Run Monte Carlo Inflation Volatility Simulation")
         st.markdown(
-            """
-            Instead of assuming one fixed inflation number, this simulation samples 1,000 potential 
-            future economic trajectories from the **model's 80% prediction intervals** (accounting for food spikes, fuel shocks, and policy rate moves).
-            """
+            f"""
+            <div style="margin-top: 0.5rem; margin-bottom: 1.25rem;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: {TEXT_PRIMARY}; margin: 0;">1,000-Run Monte Carlo Simulation</h3>
+                <p style="font-size: 0.88rem; color: {TEXT_SECONDARY}; margin: 2px 0 0 0;">
+                    Instead of assuming fixed inflation, the engine executes 1,000 stochastic economic simulations using ML prediction intervals.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
         mc_res = run_monte_carlo_shortfall_simulation(
@@ -166,19 +278,53 @@ def show_future_planner_page():
             category_interval_map=category_intervals
         )
 
-        col_mc1, col_mc2 = st.columns(2)
-        with col_mc1:
-            st.metric("Shortfall Probability (Within 24 Months)", f"{mc_res['shortfall_probability_pct']}%")
-        with col_mc2:
-            st.metric("Shortfall Scenarios Detected", f"{mc_res['shortfall_runs_count']} of 1,000 Runs")
+        prob_pct = mc_res['shortfall_probability_pct']
+        prob_type = "safe" if prob_pct <= 15 else ("watch" if prob_pct <= 40 else "risk")
 
-        st.info(mc_res["probability_text"])
+        col_mc1, col_mc2, col_mc3 = st.columns(3)
+        with col_mc1:
+            render_metric_card(
+                label="Shortfall Probability",
+                value=f"{prob_pct}%",
+                subtext="Scenarios with cash deficit",
+                badge_text=prob_type.upper(),
+                badge_type=prob_type
+            )
+        with col_mc2:
+            render_metric_card(
+                label="Deficit Trajectories",
+                value=f"{mc_res['shortfall_runs_count']} / 1,000",
+                subtext="Simulated paths showing deficit",
+                badge_text="Runs",
+                badge_type="purple"
+            )
+        with col_mc3:
+            df_pct = mc_res["percentiles_df"]
+            p10_min = df_pct["P10_Stress"].min() if not df_pct.empty else 0
+            render_metric_card(
+                label="P10 Stress Level",
+                value=format_inr(p10_min),
+                subtext="Worst-case 10th percentile surplus",
+                badge_text="Stress",
+                badge_type="risk" if p10_min < 0 else "safe"
+            )
+
+        st.markdown(
+            f"""
+            <div class="aether-card" style="margin-top: 1rem; margin-bottom: 1.25rem; padding: 1rem 1.25rem;">
+                <div style="font-weight: 600; color: {TEXT_PRIMARY}; font-size: 0.92rem;">Probabilistic Assessment</div>
+                <div style="color: {TEXT_SECONDARY}; font-size: 0.88rem; line-height: 1.5; margin-top: 2px;">
+                    {mc_res['probability_text']}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         # Plotly Percentiles Trajectory Chart (P10, P50, P90)
-        df_pct = mc_res["percentiles_df"]
         fig_mc = go.Figure()
 
-        # Shaded ribbon between P10 (Stress) and P90 (Optimistic)
+        # Shaded confidence fan between P10 (Stress) and P90 (Optimistic)
         fig_mc.add_trace(go.Scatter(
             x=df_pct["Month"], y=df_pct["P90_Optimistic"],
             mode="lines", line=dict(width=0), showlegend=False, hoverinfo="skip"
@@ -186,70 +332,140 @@ def show_future_planner_page():
         fig_mc.add_trace(go.Scatter(
             x=df_pct["Month"], y=df_pct["P10_Stress"],
             mode="lines", line=dict(width=0), fill="tonexty",
-            fillcolor="rgba(245, 158, 11, 0.2)", name="80% Monte Carlo Confidence Fan"
+            fillcolor="rgba(108, 99, 255, 0.14)", name="80% Monte Carlo Confidence Range"
         ))
         # P50 Median Line
         fig_mc.add_trace(go.Scatter(
             x=df_pct["Month"], y=df_pct["P50_Median"],
-            mode="lines+markers", line=dict(color=PRIMARY_TEAL, width=2.5),
-            name="P50 Median Trajectory"
+            mode="lines+markers", line=dict(color=PRIMARY_ACCENT, width=3),
+            marker=dict(size=4),
+            name="P50 Expected Median"
         ))
-        # Zero line
+        # Zero Shortfall Reference line
         fig_mc.add_trace(go.Scatter(
             x=df_pct["Month"], y=[0] * len(df_pct),
-            mode="lines", line=dict(color="#DC2626", dash="dot", width=1.5),
-            name="Shortfall Threshold (₹0)"
+            mode="lines", line=dict(color=COLOR_DANGER, dash="dot", width=1.5),
+            name="Deficit Boundary (₹0)"
         ))
 
-        fig_mc.update_layout(
-            title="Monte Carlo Cash Flow Fans: Stress (P10) vs. Median (P50) vs. Optimistic (P90)",
-            xaxis_title="Month",
-            yaxis_title="Net Monthly Surplus (₹)",
-            template="plotly_white",
-            height=380,
-            margin=dict(l=20, r=20, t=50, b=20),
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+        apply_aether_chart_theme(
+            fig_mc,
+            title="Monte Carlo Confidence Fans: Stress (P10) vs. Median (P50) vs. Optimistic (P90)",
+            height=390
         )
+        fig_mc.update_xaxes(title_text="Month")
+        fig_mc.update_yaxes(title_text="Net Monthly Surplus (₹)")
         st.plotly_chart(fig_mc, use_container_width=True)
 
     # ---------------- TAB 3: WHAT-IF SCENARIOS ----------------
     with tab_whatif:
-        st.markdown("#### Test Stress Shocks on Your Household")
-        st.caption("Evaluate how life events or external macro shocks impact your financial runway.")
+        st.markdown(
+            f"""
+            <div style="margin-top: 0.5rem; margin-bottom: 1.25rem;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: {TEXT_PRIMARY}; margin: 0;">Household Stress Testing & Macro Shocks</h3>
+                <p style="font-size: 0.88rem; color: {TEXT_SECONDARY}; margin: 2px 0 0 0;">
+                    Stress-test your family's cash flow against real-world economic shocks and life transitions.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         scenario_choice = st.selectbox(
-            "Select Scenario to Test:",
+            "Select Stress Scenario to Model:",
             [
-                "Scenario A: Primary Earner Job Loss for 3 Months",
-                "Scenario B: Unexpected Medical Emergency (₹1,50,000 Shock)",
-                "Scenario C: Global Crude Oil Spike (+15% Fuel & Commute Surge)",
-                "Scenario D: Monsoon Failure (Food & Groceries Inflation +5%)"
+                "Scenario A: Primary Earner Job Transition (3 Months Zero Inflow)",
+                "Scenario B: Unexpected Medical Emergency (₹1,50,000 Out-of-Pocket)",
+                "Scenario C: Global Crude Oil Spike (+15% Commute & Energy Surge)",
+                "Scenario D: Deficit Monsoon Shock (Food & Grocery Spike +20%)"
             ]
         )
 
-        if "Job Loss" in scenario_choice:
-            st.warning("**Simulating 3-Month Income Loss:** Evaluating how long your liquid emergency fund lasts.")
+        if "Job Transition" in scenario_choice:
             monthly_essential_cost = sum(o["amount"] for o in obligation_dicts) + monthly_emis
             runway_left = round(liquid_reserves / monthly_essential_cost, 1) if monthly_essential_cost > 0 else 0
-            st.metric("Liquid Emergency Reserves Available", format_inr(liquid_reserves))
-            st.metric("Emergency Runway Without Income", f"{runway_left} Months")
+
+            col_s1, col_s2 = st.columns(2)
+            with col_s1:
+                render_metric_card(
+                    label="Liquid Emergency Reserves",
+                    value=format_inr(liquid_reserves),
+                    subtext="Accessible bank savings + FDs",
+                    badge_text="Reserves",
+                    badge_type="purple"
+                )
+            with col_s2:
+                render_metric_card(
+                    label="Runway Without Inflows",
+                    value=f"{runway_left} Months",
+                    subtext="At current baseline essential burn",
+                    badge_text="Safe" if runway_left >= 3.0 else "Vulnerable",
+                    badge_type="safe" if runway_left >= 3.0 else "risk"
+                )
 
             if runway_left >= 3.0:
-                st.success(f"Your emergency fund provides {runway_left} months of buffer, successfully absorbing a 3-month job transition.")
+                st.markdown(
+                    f"""
+                    <div class="aether-card" style="border-left: 4px solid {COLOR_SUCCESS}; margin-top: 1rem;">
+                        <strong style="color: {COLOR_SUCCESS};">Stress Test Passed:</strong>
+                        Your emergency fund provides {runway_left} months of buffer, successfully absorbing a 3-month job gap without requiring liquidation of investments.
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
             else:
-                st.error(f"Vulnerable: Your runway is only {runway_left} months. A 3-month gap would deplete reserves in Month {int(runway_left)}.")
+                st.markdown(
+                    f"""
+                    <div class="aether-card" style="border-left: 4px solid {COLOR_DANGER}; margin-top: 1rem;">
+                        <strong style="color: {COLOR_DANGER};">Vulnerable:</strong>
+                        Your reserves cover only {runway_left} months. A 3-month transition would exhaust liquid funds in Month {int(runway_left)}. Consider prioritizing an emergency buffer.
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
         elif "Medical" in scenario_choice:
-            st.warning("**Simulating ₹1,50,000 Out-of-Pocket Hospitalization Shock:**")
             remaining_liquid = liquid_reserves - 150000.0
-            st.metric("Liquid Reserves After Medical Shock", format_inr(remaining_liquid))
+            col_s1, col_s2 = st.columns(2)
+            with col_s1:
+                render_metric_card(
+                    label="Reserves After ₹1.5L Shock",
+                    value=format_inr(max(0, remaining_liquid)),
+                    subtext="Post-deduction liquid buffer",
+                    badge_text="Liquid Buffer",
+                    badge_type="safe" if remaining_liquid > 0 else "risk"
+                )
+            with col_s2:
+                render_metric_card(
+                    label="Liquidity Status",
+                    value="Solvent" if remaining_liquid > 0 else "Deficit",
+                    subtext="Ability to self-insure without debt",
+                    badge_text="Solvent" if remaining_liquid > 0 else "Borrowing Req.",
+                    badge_type="safe" if remaining_liquid > 0 else "risk"
+                )
+
             if remaining_liquid > 0:
-                st.info(f"Your liquid assets absorb the ₹1.5L shock, leaving ₹{remaining_liquid:,.0f} in reserves.")
+                st.markdown(
+                    f"""
+                    <div class="aether-card" style="border-left: 4px solid {COLOR_SUCCESS}; margin-top: 1rem;">
+                        <strong style="color: {COLOR_SUCCESS};">Self-Insured Cushion:</strong>
+                        Your liquid assets absorb the ₹1,50,000 hospitalization expense, leaving {format_inr(remaining_liquid)} in emergency reserves.
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
             else:
-                st.error("Liquid reserves completely exhausted! You would require short-term borrowing or personal loans.")
+                st.markdown(
+                    f"""
+                    <div class="aether-card" style="border-left: 4px solid {COLOR_DANGER}; margin-top: 1rem;">
+                        <strong style="color: {COLOR_DANGER};">Liquidity Exhaustion:</strong>
+                        A ₹1.5L out-of-pocket shock would completely drain liquid savings. Immediate action: secure comprehensive family health insurance.
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
 
         elif "Crude" in scenario_choice:
-            st.warning("**Simulating Global Crude Oil Surge:** Petrol/diesel and LPG fuel increase by +15%.")
             shocked_obs = []
             for ob in obligation_dicts:
                 if ob["category"] in ["Commute", "Utilities"]:
@@ -257,11 +473,26 @@ def show_future_planner_page():
                 else:
                     shocked_obs.append(ob)
             res_shock = compute_shortfall_timeline(total_income, shocked_obs, monthly_emis=monthly_emis, annual_income_increment_pct=annual_hike)
-            st.metric("New Surplus Today (Under Fuel Spike)", format_inr(res_shock["current_surplus"]))
-            st.info(f"Status under shock: **{res_shock['badge']}** • Month of shortfall: {res_shock['shortfall_month'] or 'None'}")
+
+            col_s1, col_s2 = st.columns(2)
+            with col_s1:
+                render_metric_card(
+                    label="Surplus Under Fuel Spike",
+                    value=format_inr(res_shock["current_surplus"]),
+                    subtext="With +15% fuel & utility rates",
+                    badge_text=res_shock["badge"],
+                    badge_type="safe" if res_shock["current_surplus"] >= 0 else "risk"
+                )
+            with col_s2:
+                render_metric_card(
+                    label="Shortfall Month Under Spike",
+                    value=f"Month {res_shock['shortfall_month']}" if res_shock['shortfall_month'] else "None",
+                    subtext="Horizon of positive cash flow",
+                    badge_text="Stable" if not res_shock['shortfall_month'] else "Watch",
+                    badge_type="safe" if not res_shock['shortfall_month'] else "risk"
+                )
 
         elif "Monsoon" in scenario_choice:
-            st.warning("**Simulating Deficit Monsoon:** Vegetable and staple grocery costs surge by +20%.")
             shocked_obs = []
             for ob in obligation_dicts:
                 if ob["category"] == "Groceries":
@@ -269,36 +500,121 @@ def show_future_planner_page():
                 else:
                     shocked_obs.append(ob)
             res_shock = compute_shortfall_timeline(total_income, shocked_obs, monthly_emis=monthly_emis, annual_income_increment_pct=annual_hike)
-            st.metric("New Surplus Today (Under Food Surge)", format_inr(res_shock["current_surplus"]))
-            st.info(f"Status under food spike: **{res_shock['badge']}** • Month of shortfall: {res_shock['shortfall_month'] or 'None'}")
+
+            col_s1, col_s2 = st.columns(2)
+            with col_s1:
+                render_metric_card(
+                    label="Surplus Under Food Surge",
+                    value=format_inr(res_shock["current_surplus"]),
+                    subtext="With +20% grocery & staple prices",
+                    badge_text=res_shock["badge"],
+                    badge_type="safe" if res_shock["current_surplus"] >= 0 else "risk"
+                )
+            with col_s2:
+                render_metric_card(
+                    label="Shortfall Month Under Food Shock",
+                    value=f"Month {res_shock['shortfall_month']}" if res_shock['shortfall_month'] else "None",
+                    subtext="Horizon of positive cash flow",
+                    badge_text="Stable" if not res_shock['shortfall_month'] else "Watch",
+                    badge_type="safe" if not res_shock['shortfall_month'] else "risk"
+                )
 
     # ---------------- TAB 4: FAMILY PLANNING MILESTONES ----------------
     with tab_milestones:
-        st.markdown("#### Children's Education Milestones")
-        children = [m for m in members if m.relation == "Child"]
+        st.markdown(
+            f"""
+            <div style="margin-top: 0.5rem; margin-bottom: 1.25rem;">
+                <h3 style="font-size: 1.25rem; font-weight: 700; color: {TEXT_PRIMARY}; margin: 0;">Family Life Goals & Inflation Milestones</h3>
+                <p style="font-size: 0.88rem; color: {TEXT_SECONDARY}; margin: 2px 0 0 0;">
+                    Project future costs for major life events compounding at sector-specific inflation rates.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        # Children's Education Section
+        st.markdown(
+            f"""
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <div style="font-size: 1.1rem; font-weight: 700; color: {TEXT_PRIMARY};">
+                    Children's Higher Education Milestones
+                </div>
+                <span class="status-badge status-purple">7.5% Education Inflation</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        children = [m for m in members if getattr(m, "relation", "") == "Child"]
         if children:
             for ch in children:
-                st.markdown(f"##### Milestone Projections for {ch.name} (Age {ch.age})")
+                st.markdown(
+                    f"""
+                    <div style="font-size: 0.95rem; font-weight: 600; color: {PRIMARY_ACCENT}; margin-top: 12px; margin-bottom: 6px;">
+                        Plan for {ch.name} (Current Age: {ch.age})
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
                 m_list = compute_education_milestones(
                     child_name=ch.name,
                     current_age=ch.age,
                     current_annual_cost=60000.0,
                     education_inflation_rate=7.5
                 )
+
+                # Goal Cards Grid
+                goal_cols = st.columns(min(len(m_list), 4))
+                for idx, m in enumerate(m_list[:4]):
+                    with goal_cols[idx]:
+                        st.markdown(
+                            f"""
+                            <div class="aether-card" style="padding: 1.1rem;">
+                                <div style="font-size: 0.76rem; text-transform: uppercase; font-weight: 700; color: {TEXT_SECONDARY}; margin-bottom: 4px;">
+                                    {m['milestone']}
+                                </div>
+                                <div style="font-size: 1.35rem; font-weight: 800; color: {TEXT_PRIMARY}; margin-bottom: 2px;">
+                                    {format_inr(m['inflated_cost'])}
+                                </div>
+                                <div style="font-size: 0.8rem; color: {TEXT_SECONDARY}; margin-bottom: 8px;">
+                                    Target Age: {m['target_age']} ({m['years_away']} yrs away)
+                                </div>
+                                <div style="border-top: 1px solid {BORDER_COLOR}; padding-top: 6px; font-size: 0.8rem; color: {PRIMARY_ACCENT}; font-weight: 600;">
+                                    SIP: {format_inr(m['monthly_investment_needed'])}/mo
+                                </div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+
                 df_milestones = pd.DataFrame([{
                     "Academic Milestone": m["milestone"],
                     "Target Age": m["target_age"],
                     "Years Away": f"{m['years_away']} yrs",
-                    "Inflated Cost (at 7.5% Inflation)": format_inr(m["inflated_cost"]),
-                    "Monthly Investment Needed (at 9% CAGR)": format_inr(m["monthly_investment_needed"])
+                    "Inflated Cost (7.5% Inflation)": format_inr(m["inflated_cost"]),
+                    "Monthly SIP Needed (9% CAGR)": format_inr(m["monthly_investment_needed"])
                 } for m in m_list])
                 st.dataframe(df_milestones, use_container_width=True)
         else:
-            st.info("No children registered in your household profile. You can add family members under 'My Household Profile'.")
+            st.info("No children registered in your household profile. Add family members under 'My Profile' to unlock education milestone projections.")
 
-        st.markdown("---")
-        st.markdown("#### Elderly Parents' Healthcare Provision")
-        parents = [m for m in members if m.relation == "Parent"]
+        st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
+
+        # Elderly Parents Section
+        st.markdown(
+            f"""
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
+                <div style="font-size: 1.1rem; font-weight: 700; color: {TEXT_PRIMARY};">
+                    Elderly Parents' Healthcare Provision
+                </div>
+                <span class="status-badge status-watch">8-10% Medical Inflation</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        parents = [m for m in members if getattr(m, "relation", "") == "Parent"]
         if parents:
             for p in parents:
                 med_res = evaluate_parent_medical_provision(
@@ -310,18 +626,36 @@ def show_future_planner_page():
                 )
                 st.markdown(
                     f"""
-                    <div style="background-color: #F8FAFC; border: 1px solid #CBD5E1; border-radius: 8px; padding: 12px; margin-bottom: 10px;">
-                        <strong>{med_res['parent_name']} (Age {med_res['age']})</strong><br>
-                        • Current Monthly Meds: {format_inr(med_res['current_monthly'])} | Risk-Adjusted: {format_inr(med_res['risk_adjusted_monthly'])}<br>
-                        • 5-Year Projected Outgo (at 7% Medical Inflation): {format_inr(med_res['five_year_projected_monthly'])}/mo<br>
-                        • Recommended Dedicated Emergency Hospitalization Buffer: <strong>{format_inr(med_res['recommended_buffer'])}</strong><br>
-                        <span style="color: #DC2626;">{med_res['advice']}</span>
+                    <div class="aether-card" style="margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <div style="font-size: 1.05rem; font-weight: 700; color: {TEXT_PRIMARY};">
+                                {med_res['parent_name']} (Age {med_res['age']})
+                            </div>
+                            <span class="status-badge status-watch">Medical Buffer</span>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px;">
+                            <div>
+                                <div style="font-size: 0.75rem; color: {TEXT_SECONDARY}; text-transform: uppercase;">Current Monthly Meds</div>
+                                <div style="font-size: 1.1rem; font-weight: 700; color: {TEXT_PRIMARY};">{format_inr(med_res['current_monthly'])}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: {TEXT_SECONDARY}; text-transform: uppercase;">5-Yr Projected Outgo</div>
+                                <div style="font-size: 1.1rem; font-weight: 700; color: {TEXT_PRIMARY};">{format_inr(med_res['five_year_projected_monthly'])}/mo</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.75rem; color: {TEXT_SECONDARY}; text-transform: uppercase;">Recommended Buffer</div>
+                                <div style="font-size: 1.1rem; font-weight: 700; color: {PRIMARY_ACCENT};">{format_inr(med_res['recommended_buffer'])}</div>
+                            </div>
+                        </div>
+                        <div style="font-size: 0.85rem; color: {COLOR_DANGER}; line-height: 1.4; border-top: 1px solid {BORDER_COLOR}; padding-top: 8px;">
+                            {med_res['advice']}
+                        </div>
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
         else:
-            st.info("No dependent parents registered in your household profile.")
+            st.info("No dependent parents registered in your household profile. Add parents under 'My Profile' to evaluate healthcare provisions.")
 
     render_footer()
 

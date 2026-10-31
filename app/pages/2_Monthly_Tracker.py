@@ -1,10 +1,6 @@
 """
 Monthly Expense Tracker & Anomaly Monitor for Parivar Arth.
-Includes:
-1. Daily transaction logger with quick category tags
-2. Needs (50%) / Wants (30%) / Savings (20%) Indian breakdown
-3. Personal z-score overspending anomaly detector
-4. CSV statement import with auto-categorization
+Aether FinTech Design System - 50/30/20 Breakdown, Z-Score Anomaly Alerts, and CSV Import.
 """
 
 import os
@@ -28,7 +24,14 @@ from core.expense_service import (
     compute_needs_wants_savings_split, detect_overspending_anomalies,
     auto_categorize_description
 )
-from app.styles import apply_theme, render_header, render_footer, PRIMARY_TEAL, ACCENT_SAFFRON, TEXT_NAVY
+from app.styles import (
+    apply_theme, render_header, render_footer, render_metric_card,
+    render_sidebar_brand, render_sidebar_user, apply_aether_chart_theme,
+    PRIMARY_ACCENT, SECONDARY_ACCENT, SOFT_PURPLE,
+    TEXT_PRIMARY, TEXT_SECONDARY, BORDER_COLOR,
+    COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER,
+    PRIMARY_TEAL, ACCENT_SAFFRON, TEXT_NAVY
+)
 from app.components.formatters import format_inr, format_pct
 
 TRACKER_CATEGORIES = [
@@ -38,18 +41,34 @@ TRACKER_CATEGORIES = [
 
 
 def show_monthly_tracker_page():
-    st.set_page_config(page_title="Monthly Expense Tracker - Parivar Arth", page_icon=None, layout="centered")
+    st.set_page_config(
+        page_title="Expense Tracker - Parivar Arth",
+        page_icon=None,
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
     apply_theme()
     touch_session()
 
-    user_id = get_current_user_id()
+    render_sidebar_brand()
+
+    user_data = st.session_state.get("user")
+    user_id = user_data["user_id"] if user_data else get_current_user_id()
     if not user_id:
-        st.warning("Please log in to record and track your family expenses.")
+        st.warning("Please sign in to record and track your family expenses.")
         st.stop()
 
+    with st.sidebar:
+        user_name = user_data.get("name", "Household Account") if user_data else "User"
+        render_sidebar_user(username=user_name, role="Primary Account")
+        if st.button("Sign Out", key="mt_logout_btn", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
+
     render_header(
-        title="Monthly Expense Tracker",
-        subtitle="Log day-to-day spending and detect family overspending anomalies"
+        title="Monthly Expense Tracker & Anomaly Monitor",
+        subtitle="Real-time transaction tracking, 50/30/20 budget adherence, and statistical anomaly detection",
+        tag="Cash Flow"
     )
 
     with get_db_session() as db:
@@ -57,44 +76,75 @@ def show_monthly_tracker_page():
         expenses = get_user_expenses(db, user_id)
         anomalies = detect_overspending_anomalies(db, user_id)
 
-    total_monthly_income = sum(i.amount for i in profile_data["incomes"])
-    total_fixed_obligations = sum(o.amount for o in profile_data["obligations"])
+    total_monthly_income = sum(float(getattr(i, "amount", 0.0)) for i in profile_data.get("incomes", []))
+    total_fixed_obligations = sum(float(getattr(o, "amount", 0.0)) for o in profile_data.get("obligations", []))
 
-    # 1. Overspending Anomaly Alert Banner
+    # Overspending Anomaly Alert Banners
     if anomalies:
         for anom in anomalies:
             st.markdown(
                 f"""
-                <div style="background-color: #FEF2F2; border-left: 4px solid #DC2626; padding: 12px; border-radius: 8px; margin-bottom: 0.75rem;">
-                    <strong style="color: #991B1B;">Overspending Alert ({anom['category']}):</strong><br>
-                    <span style="font-size: 0.9rem; color: #7F1D1D;">{anom['message']} (z-score: {anom['z_score']})</span>
+                <div class="aether-card" style="border-left: 4px solid {COLOR_DANGER}; margin-bottom: 0.75rem; padding: 12px 16px;">
+                    <div style="font-weight: 700; color: {COLOR_DANGER}; font-size: 0.92rem; margin-bottom: 2px;">
+                        Overspending Anomaly Detected: {anom['category']}
+                    </div>
+                    <div style="font-size: 0.88rem; color: {TEXT_PRIMARY};">
+                        {anom['message']} <span style="color: {TEXT_SECONDARY};">(z-score: {anom['z_score']})</span>
+                    </div>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
 
-    tab_overview, tab_add, tab_import = st.tabs(["Spending Overview", "Log New Expense", "Import CSV Statement"])
+    tab_overview, tab_add, tab_import = st.tabs([
+        "Spending Overview & Breakdown",
+        "Log Daily Expense",
+        "Import Bank / UPI Statement"
+    ])
 
     # ---------------- TAB 1: OVERVIEW ----------------
     with tab_overview:
-        # Needs / Wants / Savings Split
         split_data = compute_needs_wants_savings_split(total_monthly_income, total_fixed_obligations, expenses)
 
-        st.markdown("#### Needs / Wants / Savings Distribution")
-        st.caption("Standard 50/30/20 benchmark vs your family's actual allocation.")
-
+        # 3 Aether Metric Cards
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Needs (Essential)", format_inr(split_data["needs_amount"]), f"{split_data['needs_pct']}% of income")
+            render_metric_card(
+                label="Needs (Essential)",
+                value=format_inr(split_data["needs_amount"]),
+                subtext=f"{split_data['needs_pct']}% of total income (Target ~50%)",
+                badge_text="Essential",
+                badge_type="watch" if split_data["is_high_needs"] else "safe"
+            )
         with col2:
-            st.metric("Wants (Discretionary)", format_inr(split_data["wants_amount"]), f"{split_data['wants_pct']}% of income")
+            render_metric_card(
+                label="Wants (Discretionary)",
+                value=format_inr(split_data["wants_amount"]),
+                subtext=f"{split_data['wants_pct']}% of total income (Target ~30%)",
+                badge_text="Lifestyle",
+                badge_type="purple"
+            )
         with col3:
-            st.metric("Estimated Savings", format_inr(split_data["savings_amount"]), f"{split_data['savings_pct']}% of income")
+            render_metric_card(
+                label="Estimated Savings",
+                value=format_inr(split_data["savings_amount"]),
+                subtext=f"{split_data['savings_pct']}% of total income (Target ~20%)",
+                badge_text="Reserves",
+                badge_type="safe" if split_data["savings_amount"] >= 0 else "risk"
+            )
 
         if split_data["is_high_needs"]:
-            st.info("**Indian Household Context:** Your essential Needs exceed 60% of income. This is very common in Indian urban families managing rent, school fees, and medical care.")
+            st.markdown(
+                f"""
+                <div class="aether-card" style="margin-top: 1rem; border-left: 4px solid {COLOR_WARNING}; padding: 10px 14px;">
+                    <strong style="color: {COLOR_WARNING};">Indian Household Reality:</strong>
+                    Essential Needs exceed 60% of income. This is very common in urban families balancing metro rent, tuition fees, and medical care. Check "Reduce Expenses" for structural savings.
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
-        st.markdown("---")
+        st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
 
         if expenses:
             exp_df = pd.DataFrame([{
@@ -105,29 +155,35 @@ def show_monthly_tracker_page():
                 "Note": e.note
             } for e in expenses])
 
-            # Visual Category Breakdown
-            cat_totals = exp_df.groupby("Category")["Amount"].sum().reset_index()
+            chart_col, data_col = st.columns([1.2, 1.8])
+            with chart_col:
+                cat_totals = exp_df.groupby("Category")["Amount"].sum().reset_index()
+                fig_donut = px.pie(
+                    cat_totals,
+                    values="Amount",
+                    names="Category",
+                    hole=0.55,
+                    color_discrete_sequence=[PRIMARY_ACCENT, COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER, SECONDARY_ACCENT, "#38BDF8", "#A78BFA"],
+                    title="Spending by Category"
+                )
+                apply_aether_chart_theme(fig_donut, title="Variable Spending Distribution", height=340)
+                st.plotly_chart(fig_donut, use_container_width=True)
 
-            fig_donut = px.pie(
-                cat_totals,
-                values="Amount",
-                names="Category",
-                hole=0.45,
-                color_discrete_sequence=px.colors.qualitative.Prism,
-                title="Variable Expense Breakdown by Category"
-            )
-            fig_donut.update_layout(margin=dict(l=10, r=10, t=40, b=10), height=320)
-            st.plotly_chart(fig_donut, use_container_width=True)
-
-            # Recent Transactions
-            st.markdown("#### Recorded Expenses")
-            st.dataframe(
-                exp_df[["Date", "Category", "Amount", "Note"]].sort_values("Date", ascending=False),
-                use_container_width=True
-            )
+            with data_col:
+                st.markdown(
+                    f"""
+                    <div style="font-size: 1.05rem; font-weight: 700; color: {TEXT_PRIMARY}; margin-bottom: 8px;">
+                        Recent Transactions
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
+                display_table = exp_df[["Date", "Category", "Amount", "Note"]].sort_values("Date", ascending=False).copy()
+                display_table["Amount"] = display_table["Amount"].apply(format_inr)
+                st.dataframe(display_table, use_container_width=True, height=280)
 
             # Quick delete option
-            with st.expander("Delete a transaction entry"):
+            with st.expander("Delete a transaction entry", expanded=False):
                 del_id = st.selectbox("Select Transaction ID to Delete", options=exp_df["id"].tolist())
                 if st.button("Delete Selected Transaction", type="secondary"):
                     with get_db_session() as db:
@@ -136,11 +192,19 @@ def show_monthly_tracker_page():
                             st.success(msg)
                             st.rerun()
         else:
-            st.info("No variable expenses logged yet. Use the 'Log New Expense' tab to record your daily spending.")
+            st.info("No variable expenses logged yet. Use the 'Log Daily Expense' tab to record your daily spending.")
 
     # ---------------- TAB 2: LOG EXPENSE ----------------
     with tab_add:
-        st.markdown("#### Record a Day-to-Day Expense")
+        st.markdown(
+            f"""
+            <div style="margin-top: 0.5rem; margin-bottom: 1rem;">
+                <h4 style="color: {TEXT_PRIMARY}; font-weight: 700; margin: 0;">Record Daily Expense</h4>
+                <p style="color: {TEXT_SECONDARY}; font-size: 0.88rem; margin: 2px 0 0 0;">Log a single out-of-pocket transaction with automatic category tagging</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         with st.form("add_expense_form", clear_on_submit=True):
             col_e1, col_e2 = st.columns(2)
             with col_e1:
@@ -148,9 +212,9 @@ def show_monthly_tracker_page():
                 e_cat = st.selectbox("Category", options=TRACKER_CATEGORIES)
             with col_e2:
                 e_amt = st.number_input("Amount (₹)", min_value=1.0, value=350.0, step=50.0)
-                e_note = st.text_input("Note / Merchant", placeholder="e.g. Swiggy lunch, vegetable market")
+                e_note = st.text_input("Note / Merchant", placeholder="e.g. Swiggy order, vegetable market")
 
-            submit_exp = st.form_submit_button("Record Expense", type="primary", use_container_width=True)
+            submit_exp = st.form_submit_button("Record Transaction", type="primary", use_container_width=True)
 
             if submit_exp:
                 with get_db_session() as db:
@@ -163,17 +227,22 @@ def show_monthly_tracker_page():
 
     # ---------------- TAB 3: CSV IMPORT ----------------
     with tab_import:
-        st.markdown("#### Import Bank / UPI CSV Statement")
-        st.caption("Upload a simple CSV with columns: `date`, `amount`, `description`.")
+        st.markdown(
+            f"""
+            <div style="margin-top: 0.5rem; margin-bottom: 1rem;">
+                <h4 style="color: {TEXT_PRIMARY}; font-weight: 700; margin: 0;">Import Bank / UPI CSV Statement</h4>
+                <p style="color: {TEXT_SECONDARY}; font-size: 0.88rem; margin: 2px 0 0 0;">Batch import transactions with auto-categorization for Indian merchants</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-        uploaded_file = st.file_uploader("Upload CSV", type=["csv"])
+        uploaded_file = st.file_uploader("Upload CSV Statement", type=["csv"])
         if uploaded_file:
             try:
                 raw_csv = pd.read_csv(uploaded_file)
-                st.write("Uploaded Preview:", raw_csv.head(3))
+                st.write("File Preview:", raw_csv.head(3))
 
-                # Identify columns
-                cols = [c.lower() for c in raw_csv.columns]
                 date_col = next((c for c in raw_csv.columns if "date" in c.lower()), None)
                 amt_col = next((c for c in raw_csv.columns if "amount" in c.lower() or "debit" in c.lower()), None)
                 desc_col = next((c for c in raw_csv.columns if "desc" in c.lower() or "narration" in c.lower() or "note" in c.lower() or "particular" in c.lower()), None)

@@ -1,10 +1,6 @@
 """
 Loans, Debt Optimization & Emergency Fund Tracker for Parivar Arth.
-Includes:
-1. Dynamic 3 vs 6-Month Emergency Runway using strictly liquid reserves
-2. Debt-to-Income (DTI) ratio analyzer
-3. Prepayment Prioritization: Avalanche (highest rate) vs Snowball (smallest balance)
-4. RBI Repo Rate Floating Loan Sensitivity Shock Simulator
+Aether FinTech Design System - Dynamic Runway, DTI Health, Prepayment Strategies, and Repo Shock Simulator.
 """
 
 import os
@@ -22,43 +18,65 @@ from core.security import touch_session, get_current_user_id
 from core.profile_service import get_household_profile
 from planner.emergency import determine_emergency_fund_target_months, calculate_liquid_emergency_fund
 from planner.loans import calculate_dti, simulate_floating_repo_shock, rank_debt_prepayments
-from app.styles import apply_theme, render_header, render_footer, PRIMARY_TEAL, ACCENT_SAFFRON, TEXT_NAVY
+from app.styles import (
+    apply_theme, render_header, render_footer, render_metric_card,
+    render_sidebar_brand, render_sidebar_user,
+    PRIMARY_ACCENT, SECONDARY_ACCENT, SOFT_PURPLE,
+    TEXT_PRIMARY, TEXT_SECONDARY, BORDER_COLOR,
+    COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER,
+    PRIMARY_TEAL, ACCENT_SAFFRON, TEXT_NAVY
+)
 from app.components.formatters import format_inr, format_pct
 
 
 def show_loans_emergency_page():
-    st.set_page_config(page_title="Loans & Emergency Fund - Parivar Arth", page_icon=None, layout="centered")
+    st.set_page_config(
+        page_title="Loans & Emergency - Parivar Arth",
+        page_icon=None,
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
     apply_theme()
     touch_session()
 
-    user_id = get_current_user_id()
+    render_sidebar_brand()
+
+    user_data = st.session_state.get("user")
+    user_id = user_data["user_id"] if user_data else get_current_user_id()
     if not user_id:
         st.warning("Please sign in to access your debt and emergency fund dashboard.")
         st.stop()
 
+    with st.sidebar:
+        user_name = user_data.get("name", "Household Account") if user_data else "User"
+        render_sidebar_user(username=user_name, role="Primary Account")
+        if st.button("Sign Out", key="le_logout_btn", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
+
     render_header(
-        title="Loans & Emergency Fund Health",
-        subtitle="Manage debt stress, repo-rate sensitivity, and household emergency runway"
+        title="Loans, Debt & Emergency Runway",
+        subtitle="Household solvency, DTI risk analysis, prepayment strategy, and RBI repo rate shock modeling",
+        tag="Balance Sheet"
     )
 
     with get_db_session() as db:
         profile_data = get_household_profile(db, user_id)
 
-    members = profile_data["members"]
-    incomes = profile_data["incomes"]
-    obligations = profile_data["obligations"]
-    loans = profile_data["loans"]
-    assets = profile_data["assets"]
+    members = profile_data.get("members", [])
+    incomes = profile_data.get("incomes", [])
+    obligations = profile_data.get("obligations", [])
+    loans = profile_data.get("loans", [])
+    assets = profile_data.get("assets", [])
 
-    total_income = sum(i.amount for i in incomes)
-    monthly_fixed_costs = sum(o.amount for o in obligations)
-    total_emis = sum(l.emi for l in loans)
+    total_income = sum(float(getattr(i, "amount", 0.0)) for i in incomes)
+    monthly_fixed_costs = sum(float(getattr(o, "amount", 0.0)) for o in obligations)
+    total_emis = sum(float(getattr(l, "emi", 0.0)) for l in loans)
     monthly_essentials = monthly_fixed_costs + total_emis
 
-    # Check risk profile
     is_single = len(incomes) <= 1
-    has_var = any(i.is_variable for i in incomes)
-    has_chronic = any(m.has_chronic_condition for m in members)
+    has_var = any(bool(getattr(i, "is_variable", False)) for i in incomes)
+    has_chronic = any(bool(getattr(m, "has_chronic_condition", False)) for m in members)
 
     target_months, target_explanation = determine_emergency_fund_target_months(
         is_single_earner=is_single,
@@ -66,23 +84,28 @@ def show_loans_emergency_page():
         has_chronic_dependents=has_chronic
     )
 
-    # Compute emergency fund
-    asset_dicts = [{"type": a.type, "amount": a.amount, "is_liquid": a.is_liquid} for a in assets]
+    asset_dicts = [{"type": getattr(a, "type", "Asset"), "amount": float(getattr(a, "amount", 0.0)), "is_liquid": getattr(a, "is_liquid", False)} for a in assets]
     ef_data = calculate_liquid_emergency_fund(asset_dicts, monthly_essentials, target_months=target_months)
 
-    tab_emergency, tab_loans, tab_repo = st.tabs(["Emergency Fund Runway", "Debt & Prepayment", "Repo Rate Sensitivity"])
+    tab_emergency, tab_loans, tab_repo = st.tabs([
+        "Emergency Fund Runway",
+        "Debt Health & Prepayment",
+        "RBI Repo Rate Shock Simulator"
+    ])
 
     # ---------------- TAB 1: EMERGENCY FUND ----------------
     with tab_emergency:
         st.markdown(
             f"""
-            <div style="background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 1rem;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h4 style="margin: 0; color: {PRIMARY_TEAL};">Emergency Runway Status</h4>
-                    <span style="font-size: 1.1rem; font-weight: bold;">{ef_data['badge']}</span>
+            <div class="aether-card" style="margin-top: 0.5rem; margin-bottom: 1.25rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <div style="font-size: 1.1rem; font-weight: 700; color: {TEXT_PRIMARY};">
+                        Emergency Runway Status: {ef_data['badge']}
+                    </div>
+                    <span class="status-badge status-purple">{ef_data['badge']}</span>
                 </div>
-                <p style="margin: 6px 0 0 0; color: #475569; font-size: 0.95rem;">{ef_data['advice']}</p>
-                <p style="margin: 4px 0 0 0; color: #64748B; font-size: 0.85rem;"><em>{target_explanation}</em></p>
+                <div style="font-size: 0.9rem; color: {TEXT_SECONDARY}; line-height: 1.5;">{ef_data['advice']}</div>
+                <div style="font-size: 0.82rem; color: {PRIMARY_ACCENT}; margin-top: 4px; font-weight: 500;">{target_explanation}</div>
             </div>
             """,
             unsafe_allow_html=True
@@ -90,20 +113,57 @@ def show_loans_emergency_page():
 
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Total Liquid Reserves", format_inr(ef_data["total_liquid"]))
+            render_metric_card(
+                label="Total Liquid Reserves",
+                value=format_inr(ef_data["total_liquid"]),
+                subtext="Savings account + FDs only",
+                badge_text="Liquid Buffer",
+                badge_type="purple"
+            )
         with col2:
-            st.metric("Monthly Essential Needs", format_inr(monthly_essentials))
+            render_metric_card(
+                label="Monthly Essential Burn",
+                value=format_inr(monthly_essentials),
+                subtext="Fixed obligations + loan EMIs",
+                badge_text="Essential Burn",
+                badge_type="watch"
+            )
         with col3:
-            st.metric("Runway Available", f"{ef_data['runway_months']} Months")
+            runway_type = "safe" if ef_data['runway_months'] >= target_months else "risk"
+            render_metric_card(
+                label="Runway Available",
+                value=f"{ef_data['runway_months']:.1f} Months",
+                subtext=f"Target: {target_months} months based on profile",
+                badge_text=runway_type.upper(),
+                badge_type=runway_type
+            )
 
-        st.markdown(f"**Emergency Target Progress ({format_inr(ef_data['total_liquid'])} of {format_inr(ef_data['target_amount'])})**")
-        st.progress(ef_data["progress_pct"] / 100.0)
+        st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+        st.markdown(
+            f"""
+            <div style="display: flex; justify-content: space-between; font-size: 0.88rem; font-weight: 600; color: {TEXT_PRIMARY}; margin-bottom: 4px;">
+                <span>Target Funding Progress</span>
+                <span>{format_inr(ef_data['total_liquid'])} of {format_inr(ef_data['target_amount'])} ({ef_data['progress_pct']}%)</span>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        st.progress(min(1.0, ef_data["progress_pct"] / 100.0))
 
-        st.markdown("#### Counted Liquid Assets vs. Excluded Illiquid Assets")
+        st.markdown(
+            f"""
+            <div style="margin-top: 1.5rem; margin-bottom: 0.75rem;">
+                <h4 style="color: {TEXT_PRIMARY}; font-weight: 700; margin: 0;">Liquid Assets vs. Excluded Illiquid Assets</h4>
+                <p style="color: {TEXT_SECONDARY}; font-size: 0.85rem; margin: 2px 0 0 0;">Parivar Arth strictly excludes property and lock-in PF from emergency runway</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
         if ef_data["breakdown"]:
-            st.dataframe(pd.DataFrame(ef_data["breakdown"]), use_container_width=True)
+            df_assets = pd.DataFrame(ef_data["breakdown"])
+            st.dataframe(df_assets, use_container_width=True)
         else:
-            st.info("No assets recorded. Add savings accounts or fixed deposits under My Household Profile.")
+            st.info("No assets recorded yet. Add savings accounts or fixed deposits under 'My Profile'.")
 
     # ---------------- TAB 2: DEBT & PREPAYMENT ----------------
     with tab_loans:
@@ -111,47 +171,102 @@ def show_loans_emergency_page():
 
         col_d1, col_d2 = st.columns(2)
         with col_d1:
-            st.metric("Total Outstanding Debt", format_inr(sum(l.balance for l in loans)))
+            total_debt_val = sum(float(getattr(l, "balance", 0.0)) for l in loans)
+            render_metric_card(
+                label="Total Outstanding Debt",
+                value=format_inr(total_debt_val),
+                subtext="Across all registered loans",
+                badge_text="Principal",
+                badge_type="purple"
+            )
         with col_d2:
-            st.metric("Debt-to-Income (DTI)", f"{dti_pct}%", f"[{dti_status}]")
+            dti_type = "safe" if "healthy" in dti_status.lower() or "safe" in dti_status.lower() else ("watch" if "moderate" in dti_status.lower() else "risk")
+            render_metric_card(
+                label="Debt-to-Income (DTI)",
+                value=f"{dti_pct}%",
+                subtext=f"Status: {dti_status}",
+                badge_text=dti_status.upper(),
+                badge_type=dti_type
+            )
 
-        st.caption(f"**Banking Guidance:** {dti_advice}")
+        st.markdown(
+            f"""
+            <div class="aether-card" style="margin-top: 1rem; margin-bottom: 1.25rem; padding: 12px 16px;">
+                <div style="font-size: 0.88rem; color: {TEXT_SECONDARY}; line-height: 1.5;">
+                    <strong>Banking Underwriting Guidance:</strong> {dti_advice}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-        st.markdown("---")
-        st.markdown("#### Prepayment Strategy: Avalanche vs. Snowball")
-        st.write("Accelerate debt freedom by deploying an extra prepayment each month:")
+        st.markdown(
+            f"""
+            <div style="margin-top: 1.25rem; margin-bottom: 0.5rem;">
+                <h4 style="color: {TEXT_PRIMARY}; font-weight: 700; margin: 0;">Prepayment Acceleration Strategy</h4>
+                <p style="color: {TEXT_SECONDARY}; font-size: 0.85rem; margin: 2px 0 0 0;">Compare Avalanche (interest minimization) vs Snowball (psychological momentum)</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         extra_prepay = st.number_input("Extra Monthly Debt Prepayment (₹)", min_value=1000.0, value=5000.0, step=1000.0)
         loan_dicts = [{"id": l.id, "loan_type": l.loan_type, "balance": l.balance, "interest_rate": l.interest_rate, "emi": l.emi, "remaining_months": l.remaining_months, "rate_type": l.rate_type} for l in loans]
-        
+
         ranks = rank_debt_prepayments(loan_dicts, extra_monthly_prepayment=extra_prepay)
 
         col_av, col_sn = st.columns(2)
         with col_av:
-            st.markdown("##### Avalanche (Highest APR First)")
-            st.caption("Mathematically saves the highest interest in rupees.")
+            st.markdown(
+                f"""
+                <div class="aether-card">
+                    <div style="font-weight: 700; color: {PRIMARY_ACCENT}; font-size: 1.05rem; margin-bottom: 4px;">
+                        Avalanche Method (Highest APR First)
+                    </div>
+                    <div style="font-size: 0.82rem; color: {TEXT_SECONDARY}; margin-bottom: 12px;">
+                        Mathematically saves the highest interest in rupees.
+                    </div>
+                """,
+                unsafe_allow_html=True
+            )
             for r in ranks["avalanche"]:
                 st.info(r["recommendation"])
+            st.markdown("</div>", unsafe_allow_html=True)
 
         with col_sn:
-            st.markdown("##### Snowball (Smallest Balance First)")
-            st.caption("Eliminates loan counts fast for psychological momentum.")
+            st.markdown(
+                f"""
+                <div class="aether-card">
+                    <div style="font-weight: 700; color: {COLOR_SUCCESS}; font-size: 1.05rem; margin-bottom: 4px;">
+                        Snowball Method (Smallest Balance First)
+                    </div>
+                    <div style="font-size: 0.82rem; color: {TEXT_SECONDARY}; margin-bottom: 12px;">
+                        Closes individual loans quickly to build psychological momentum.
+                    </div>
+                """,
+                unsafe_allow_html=True
+            )
             for r in ranks["snowball"]:
                 st.success(r["recommendation"])
+            st.markdown("</div>", unsafe_allow_html=True)
 
     # ---------------- TAB 3: REPO SENSITIVITY ----------------
     with tab_repo:
-        st.markdown("#### RBI Repo Rate Floating Loan Sensitivity Shock")
         st.markdown(
-            """
-            When the Reserve Bank of India increases the policy repo rate, banks immediately pass on 
-            the increase to external benchmark linked floating rate loans (Home Loans, LAP).
-            """
+            f"""
+            <div style="margin-top: 0.5rem; margin-bottom: 1.25rem;">
+                <h4 style="color: {TEXT_PRIMARY}; font-weight: 700; margin: 0;">RBI Repo Rate Floating Loan Sensitivity Shock</h4>
+                <p style="color: {TEXT_SECONDARY}; font-size: 0.88rem; margin: 2px 0 0 0;">
+                    Simulate how RBI policy rate adjustments pass through to your external benchmark home loan EMIs.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
         floating_loans = [l for l in loans if str(l.rate_type).lower() == "floating" or "home" in str(l.loan_type).lower()]
         if not floating_loans:
-            st.info("You have no floating rate loans registered in your profile. You can simulate on a sample ₹40 Lakh Home Loan below:")
+            st.info("No floating rate loans registered in your profile. Below is a simulation on a standard ₹40 Lakh Home Loan:")
             sim_balance = 4000000.0
             sim_rate = 8.5
             sim_months = 240
@@ -163,7 +278,7 @@ def show_loans_emergency_page():
             st.markdown(f"**Evaluating active floating loan:** `{fl.loan_type}` (Balance: {format_inr(sim_balance)}, Rate: {sim_rate}%)")
 
         shock_bps = st.select_slider(
-            "Hypothetical RBI Repo Rate Hike (basis points):",
+            "Simulated RBI Repo Rate Hike (basis points):",
             options=[25, 50, 75, 100, 150],
             value=50,
             format_func=lambda x: f"+{x} bps (+{x/100:.2f}%)"
@@ -178,16 +293,44 @@ def show_loans_emergency_page():
 
         col_s1, col_s2, col_s3 = st.columns(3)
         with col_s1:
-            st.metric("Current EMI", format_inr(shock_res["current_emi"]))
+            render_metric_card(
+                label="Current EMI",
+                value=format_inr(shock_res["current_emi"]),
+                subtext=f"Base Rate: {sim_rate:.2f}%",
+                badge_text="Current",
+                badge_type="purple"
+            )
         with col_s2:
-            st.metric(f"New EMI (at {shock_res['new_rate']}%)", format_inr(shock_res["new_emi"]))
+            render_metric_card(
+                label="Shocked EMI",
+                value=format_inr(shock_res["new_emi"]),
+                subtext=f"New Rate: {shock_res['new_rate']}%",
+                badge_text="Adjusted",
+                badge_type="watch"
+            )
         with col_s3:
-            st.metric("Monthly Outflow Increase", f"+{format_inr(shock_res['emi_increase'])}")
+            render_metric_card(
+                label="Monthly Outflow Surge",
+                value=f"+{format_inr(shock_res['emi_increase'])}",
+                subtext="Direct additional monthly drain",
+                badge_text="Surge",
+                badge_type="risk"
+            )
 
-        st.warning(
-            f"**Tenure Impact Option:** If your bank keeps your monthly EMI fixed instead of increasing it, "
-            f"your loan tenure will automatically extend by **+{shock_res['tenure_extension_months']} months** "
-            f"(~{shock_res['tenure_extension_months'] // 12} years), resulting in substantial additional interest paid to the lender."
+        st.markdown(
+            f"""
+            <div class="aether-card" style="margin-top: 1.25rem; border-left: 4px solid {COLOR_WARNING};">
+                <div style="font-weight: 700; color: {COLOR_WARNING}; font-size: 0.95rem; margin-bottom: 4px;">
+                    Tenure Extension Warning
+                </div>
+                <div style="font-size: 0.88rem; color: {TEXT_PRIMARY}; line-height: 1.5;">
+                    If your lender keeps your EMI payment fixed instead of raising it, your loan tenure will automatically extend by
+                    <strong>+{shock_res['tenure_extension_months']} months</strong> (~{shock_res['tenure_extension_months'] // 12} years),
+                    adding significant compounding interest over the life of your mortgage.
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
     render_footer()

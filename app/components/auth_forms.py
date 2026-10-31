@@ -1,5 +1,5 @@
 """
-Authentication UI Components for Parivar Arth:
+Authentication UI Components for Parivar Arth (Aether FinTech Theme):
 Login, Register (with consent & privacy disclaimer), Password Reset, and Account Deletion.
 """
 
@@ -11,20 +11,24 @@ from core.auth import (
     verify_and_reset_password, delete_user_account
 )
 from core.security import touch_session
-from app.styles import PRIMARY_TEAL, ACCENT_SAFFRON, TEXT_NAVY
+from app.styles import (
+    PRIMARY_ACCENT, SECONDARY_ACCENT, TEXT_PRIMARY, TEXT_SECONDARY,
+    BORDER_COLOR, COLOR_DANGER, COLOR_SUCCESS, SOFT_PURPLE,
+    PRIMARY_TEAL, ACCENT_SAFFRON, TEXT_NAVY
+)
 
 
 def render_auth_tabs():
     """Render Tabbed Authentication Interface: Login, Register, Forgot Password."""
-    login_tab, register_tab, reset_tab = st.tabs(["Log In", "Register New Family", "Forgot Password"])
+    login_tab, register_tab, reset_tab = st.tabs(["Sign In", "Register New Family", "Forgot Password"])
 
     # ---------------- LOGIN TAB ----------------
     with login_tab:
         st.markdown(
             f"""
-            <div style="margin-bottom: 1rem;">
-                <h3 style="color: {TEXT_NAVY}; margin-bottom: 0.25rem;">Welcome to Parivar Arth</h3>
-                <p style="color: #64748B; font-size: 0.9rem;">Sign in to view your family's inflation-adjusted financial plan.</p>
+            <div style="margin-bottom: 1.25rem;">
+                <h3 style="color: {TEXT_PRIMARY}; font-size: 1.35rem; font-weight: 700; margin-bottom: 0.25rem;">Sign In to Parivar Arth</h3>
+                <p style="color: {TEXT_SECONDARY}; font-size: 0.9rem; margin-top: 0;">Access your household's inflation projections, cash flow engine, and savings plan.</p>
             </div>
             """,
             unsafe_allow_html=True
@@ -32,8 +36,8 @@ def render_auth_tabs():
 
         with st.form("login_form", clear_on_submit=False):
             email = st.text_input("Email Address", placeholder="name@example.com", help="Your registered email address.")
-            password = st.text_input("Password", type="password", placeholder="••••••••", help="Enter your account password.")
-            submitted = st.form_submit_button("Sign In", use_container_width=True, type="primary")
+            password = st.text_input("Password", type="password", placeholder="Enter your password", help="Enter your account password.")
+            submitted = st.form_submit_button("Sign In to Dashboard", use_container_width=True, type="primary")
 
             if submitted:
                 if not email or not password:
@@ -50,8 +54,8 @@ def render_auth_tabs():
                                 "role": user.role
                             }
                             touch_session()
-                            st.success(f"Welcome, {user.name}! Signing you in...")
-                            time.sleep(0.5)
+                            st.success(f"Welcome back, {user.name}! Redirecting to dashboard...")
+                            time.sleep(0.4)
                             st.rerun()
                         else:
                             st.error(message)
@@ -60,9 +64,9 @@ def render_auth_tabs():
     with register_tab:
         st.markdown(
             f"""
-            <div style="margin-bottom: 1rem;">
-                <h3 style="color: {TEXT_NAVY}; margin-bottom: 0.25rem;">Create Household Account</h3>
-                <p style="color: #64748B; font-size: 0.9rem;">One account per household. All financial forecasts are strictly isolated.</p>
+            <div style="margin-bottom: 1.25rem;">
+                <h3 style="color: {TEXT_PRIMARY}; font-size: 1.35rem; font-weight: 700; margin-bottom: 0.25rem;">Create Household Account</h3>
+                <p style="color: {TEXT_SECONDARY}; font-size: 0.9rem; margin-top: 0;">One account per household. All financial forecasts and data are strictly isolated.</p>
             </div>
             """,
             unsafe_allow_html=True
@@ -75,12 +79,12 @@ def render_auth_tabs():
             reg_pw_confirm = st.text_input("Confirm Password", type="password", placeholder="Re-enter password")
 
             st.markdown(
-                """
-                <div style="background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 10px; font-size: 0.8rem; color: #475569; margin-top: 10px; margin-bottom: 10px;">
-                    <strong>Privacy & Disclaimer Notice:</strong><br>
+                f"""
+                <div style="background-color: #FAFAFD; border: 1px solid {BORDER_COLOR}; border-radius: 12px; padding: 12px 16px; font-size: 0.82rem; color: {TEXT_SECONDARY}; margin: 12px 0;">
+                    <div style="font-weight: 700; color: {TEXT_PRIMARY}; margin-bottom: 4px;">Data Privacy & Planning Disclaimer</div>
                     • Parivar Arth is an educational planning tool, not SEBI-registered financial or medical advice.<br>
-                    • We do not sell or share personal transaction records.<br>
-                    • Passwords are encrypted with bcrypt; queries use strict multi-tenant session isolation.
+                    • We never sell, share, or monetize family transaction records.<br>
+                    • Encrypted with bcrypt; queries use multi-tenant session isolation.
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -106,7 +110,7 @@ def render_auth_tabs():
                             }
                             touch_session()
                             st.success("Account created successfully! Welcome to Parivar Arth.")
-                            time.sleep(0.5)
+                            time.sleep(0.4)
                             st.rerun()
                         else:
                             st.error(message)
@@ -115,9 +119,9 @@ def render_auth_tabs():
     with reset_tab:
         st.markdown(
             f"""
-            <div style="margin-bottom: 1rem;">
-                <h3 style="color: {TEXT_NAVY}; margin-bottom: 0.25rem;">Reset Your Password</h3>
-                <p style="color: #64748B; font-size: 0.9rem;">Generate a secure, one-time 30-minute token to update your password.</p>
+            <div style="margin-bottom: 1.25rem;">
+                <h3 style="color: {TEXT_PRIMARY}; font-size: 1.35rem; font-weight: 700; margin-bottom: 0.25rem;">Reset Your Password</h3>
+                <p style="color: {TEXT_SECONDARY}; font-size: 0.9rem; margin-top: 0;">Generate a secure, one-time 30-minute token to update your password.</p>
             </div>
             """,
             unsafe_allow_html=True
@@ -162,11 +166,11 @@ def render_delete_account_dialog(user_id: int):
     """Render Delete Account confirmation modal/expander."""
     with st.expander("Danger Zone: Delete My Account", expanded=False):
         st.markdown(
-            """
-            <div style="color: #DC2626; font-size: 0.9rem; margin-bottom: 10px;">
+            f"""
+            <div style="color: {COLOR_DANGER}; font-size: 0.88rem; margin-bottom: 12px; line-height: 1.4;">
                 <strong>Warning:</strong> Deleting your account will permanently wipe all your family profiles,
                 income sources, fixed obligations, recorded expenses, and loan records.
-                This action cannot be undone (ON DELETE CASCADE is executed).
+                This action cannot be undone.
             </div>
             """,
             unsafe_allow_html=True

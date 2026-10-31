@@ -1,9 +1,6 @@
 """
 Savings Advisor & Goal Planner Page for Parivar Arth.
-Includes:
-1. Actionable savings levers ranked by monthly rupee impact
-2. Indian Household Consumption Expenditure Survey (HCES) peer benchmarks
-3. Inflation-adjusted savings goal feasibility calculator
+Aether FinTech Design System - Ranked Levers, MoSPI Peer Benchmarks, and Inflation-Adjusted Goals.
 """
 
 import os
@@ -23,23 +20,46 @@ from core.profile_service import get_household_profile
 from core.expense_service import get_user_expenses
 from planner.savings import generate_savings_recommendations, compare_with_consumption_benchmarks
 from planner.family_goals import compute_goal_feasibility
-from app.styles import apply_theme, render_header, render_footer, PRIMARY_TEAL, ACCENT_SAFFRON, TEXT_NAVY
+from app.styles import (
+    apply_theme, render_header, render_footer, render_metric_card,
+    render_sidebar_brand, render_sidebar_user,
+    PRIMARY_ACCENT, SECONDARY_ACCENT, SOFT_PURPLE,
+    TEXT_PRIMARY, TEXT_SECONDARY, BORDER_COLOR,
+    COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER,
+    PRIMARY_TEAL, ACCENT_SAFFRON, TEXT_NAVY
+)
 from app.components.formatters import format_inr
 
 
 def show_savings_advisor_page():
-    st.set_page_config(page_title="Savings Advisor - Parivar Arth", page_icon=None, layout="centered")
+    st.set_page_config(
+        page_title="Savings Advisor - Parivar Arth",
+        page_icon=None,
+        layout="wide",
+        initial_sidebar_state="expanded"
+    )
     apply_theme()
     touch_session()
 
-    user_id = get_current_user_id()
+    render_sidebar_brand()
+
+    user_data = st.session_state.get("user")
+    user_id = user_data["user_id"] if user_data else get_current_user_id()
     if not user_id:
         st.warning("Please sign in to access your personalized savings advisor.")
         st.stop()
 
+    with st.sidebar:
+        user_name = user_data.get("name", "Household Account") if user_data else "User"
+        render_sidebar_user(username=user_name, role="Primary Account")
+        if st.button("Sign Out", key="sa_logout_btn", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
+
     render_header(
-        title="Savings Advisor & Goals",
-        subtitle="Ranked savings recommendations and inflation-adjusted milestone planning"
+        title="Savings Advisor & Wealth Goals",
+        subtitle="Prioritized savings levers, MoSPI consumption benchmarks, and inflation-adjusted milestone planning",
+        tag="Advisory"
     )
 
     with get_db_session() as db:
@@ -47,21 +67,21 @@ def show_savings_advisor_page():
         user_expenses = get_user_expenses(db, user_id)
         saved_goals = db.query(Goal).filter(Goal.user_id == user_id).all()
 
-    incomes = profile_data["incomes"]
-    obligations = profile_data["obligations"]
-    loans = profile_data["loans"]
-    assets = profile_data["assets"]
-    prof = profile_data["profile"]
+    incomes = profile_data.get("incomes", [])
+    obligations = profile_data.get("obligations", [])
+    loans = profile_data.get("loans", [])
+    assets = profile_data.get("assets", [])
+    prof = profile_data.get("profile")
 
-    total_income = sum(i.amount for i in incomes)
-    monthly_fixed = sum(o.amount for o in obligations)
-    monthly_emis = sum(l.emi for l in loans)
-    monthly_var_expenses = sum(e.amount for e in user_expenses) if user_expenses else (monthly_fixed * 0.25)
+    total_income = sum(float(getattr(i, "amount", 0.0)) for i in incomes)
+    monthly_fixed = sum(float(getattr(o, "amount", 0.0)) for o in obligations)
+    monthly_emis = sum(float(getattr(l, "emi", 0.0)) for l in loans)
+    monthly_var_expenses = sum(float(getattr(e, "amount", 0.0)) for e in user_expenses) if user_expenses else (monthly_fixed * 0.25)
     total_monthly_spending = monthly_fixed + monthly_emis + monthly_var_expenses
-    liquid_reserves = sum(a.amount for a in assets if a.is_liquid)
+    liquid_reserves = sum(float(getattr(a, "amount", 0.0)) for a in assets if getattr(a, "is_liquid", False))
 
     loan_dicts = [{"id": l.id, "balance": l.balance, "interest_rate": l.interest_rate, "emi": l.emi} for l in loans]
-    
+
     # Generate recommendations
     recs = generate_savings_recommendations(
         monthly_income=total_income,
@@ -71,43 +91,88 @@ def show_savings_advisor_page():
         wants_spending=monthly_var_expenses * 0.4
     )
 
-    tab_recs, tab_benchmarks, tab_goals = st.tabs(["High-Impact Levers", "Peer Benchmarks", "Goal Planner"])
+    # Top Overview Metrics
+    m1, m2, m3 = st.columns(3)
+    with m1:
+        render_metric_card(
+            label="Total Monthly Inflow",
+            value=format_inr(total_income),
+            subtext="Baseline household income",
+            badge_text="Inflows",
+            badge_type="purple"
+        )
+    with m2:
+        render_metric_card(
+            label="Monthly Outflow Total",
+            value=format_inr(total_monthly_spending),
+            subtext="Fixed + EMI + variable spend",
+            badge_text="Outflows",
+            badge_type="watch"
+        )
+    with m3:
+        potential_reclaim = sum(r.get("rupee_impact", 0) for r in recs)
+        render_metric_card(
+            label="Reclaim Potential",
+            value=f"+{format_inr(potential_reclaim)}/mo",
+            subtext="From top prioritized levers",
+            badge_text="Opportunity",
+            badge_type="safe"
+        )
+
+    st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+
+    tab_recs, tab_benchmarks, tab_goals = st.tabs([
+        "High-Impact Savings Levers",
+        "Peer Consumption Benchmarks",
+        "Goal Feasibility Planner"
+    ])
 
     # ---------------- TAB 1: SAVINGS RECOMMENDATIONS ----------------
     with tab_recs:
-        st.markdown("#### Prioritized Savings Levers (Ranked by Rupee Impact)")
-        st.caption("Focus on the highest rupee return first to maximize family financial headroom.")
+        st.markdown(
+            f"""
+            <div style="margin-top: 0.5rem; margin-bottom: 1.25rem;">
+                <h4 style="color: {TEXT_PRIMARY}; font-weight: 700; margin: 0;">Prioritized Savings Levers</h4>
+                <p style="color: {TEXT_SECONDARY}; font-size: 0.88rem; margin: 2px 0 0 0;">Ranked by monthly rupee impact to deliver immediate headroom to your family</p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         if recs:
             for r in recs:
                 st.markdown(
                     f"""
-                    <div style="background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 12px; padding: 16px; margin-bottom: 1rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04);">
+                    <div class="aether-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                            <span style="background-color: #E6F4F2; color: {PRIMARY_TEAL}; padding: 3px 10px; border-radius: 999px; font-size: 0.8rem; font-weight: bold;">
-                                #{r['priority']} • {r['category']}
+                            <span class="status-badge status-purple">
+                                Priority #{r['priority']} • {r['category']}
                             </span>
-                            <span style="font-weight: 800; color: #16A34A; font-size: 1.05rem;">
+                            <span style="font-weight: 800; color: {COLOR_SUCCESS}; font-size: 1.05rem;">
                                 +{format_inr(r['rupee_impact'])}/mo potential
                             </span>
                         </div>
-                        <h4 style="margin: 4px 0 6px 0; color: {TEXT_NAVY};">{r['title']}</h4>
-                        <p style="margin: 0; color: #475569; font-size: 0.9rem; line-height: 1.4;">{r['advice']}</p>
+                        <h4 style="margin: 6px 0 4px 0; color: {TEXT_PRIMARY}; font-size: 1.05rem;">{r['title']}</h4>
+                        <p style="margin: 0; color: {TEXT_SECONDARY}; font-size: 0.9rem; line-height: 1.5;">{r['advice']}</p>
                     </div>
                     """,
                     unsafe_allow_html=True
                 )
         else:
-            st.info("No immediate savings red-flags detected. Your household savings rate is strong!")
+            st.info("No urgent savings flags detected. Your household savings rate is on a healthy track.")
 
     # ---------------- TAB 2: PEER BENCHMARKS ----------------
     with tab_benchmarks:
-        st.markdown("#### Household Consumption Survey Peer Comparison")
         st.markdown(
-            """
-            How does your family's allocation compare to similar households in your city tier?
-            *(Data source: MoSPI Household Consumption Expenditure Survey benchmarks).*
-            """
+            f"""
+            <div style="margin-top: 0.5rem; margin-bottom: 1.25rem;">
+                <h4 style="color: {TEXT_PRIMARY}; font-weight: 700; margin: 0;">MoSPI Household Consumption Benchmarks</h4>
+                <p style="color: {TEXT_SECONDARY}; font-size: 0.88rem; margin: 2px 0 0 0;">
+                    How your family's essential spending compares to peer households in your city classification.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
         )
 
         city_type = prof.city_type if prof else "Metro (Tier-1)"
@@ -138,24 +203,42 @@ def show_savings_advisor_page():
                 delta_color="inverse"
             )
 
-        st.caption(f"Note: {bench['note']}")
+        st.markdown(
+            f"""
+            <div class="aether-card" style="margin-top: 1rem; padding: 12px 16px;">
+                <div style="font-size: 0.85rem; color: {TEXT_SECONDARY}; line-height: 1.5;">
+                    <strong>Benchmark Observation:</strong> {bench['note']}
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
     # ---------------- TAB 3: GOAL PLANNER ----------------
     with tab_goals:
-        st.markdown("#### Inflation-Adjusted Goal Calculator")
-        st.caption("Plan for marriage, vehicle purchase, or home downpayment with compounding inflation.")
+        st.markdown(
+            f"""
+            <div style="margin-top: 0.5rem; margin-bottom: 1.25rem;">
+                <h4 style="color: {TEXT_PRIMARY}; font-weight: 700; margin: 0;">Inflation-Adjusted Goal Calculator</h4>
+                <p style="color: {TEXT_SECONDARY}; font-size: 0.88rem; margin: 2px 0 0 0;">
+                    Model home downpayments, car purchases, or weddings with realistic compounding inflation.
+                </p>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
         with st.form("goal_calculator_form"):
             g_name = st.text_input("Goal Name", value="Home Downpayment / Renovation")
             col_g1, col_g2 = st.columns(2)
             with col_g1:
                 g_target = st.number_input("Target Amount in Today's Money (₹)", min_value=10000.0, value=1500000.0, step=50000.0)
-                g_years = st.number_input("Years to Goal", min_value=0.5, max_value=30.0, value=5.0, step=0.5)
+                g_years = st.number_input("Years to Horizon", min_value=0.5, max_value=30.0, value=5.0, step=0.5)
             with col_g2:
                 g_inf = st.number_input("Assumed Inflation Rate (%/yr)", min_value=2.0, max_value=15.0, value=6.0, step=0.5)
-                g_roi = st.number_input("Expected Investment Growth (%/yr)", min_value=4.0, max_value=18.0, value=10.0, step=0.5)
+                g_roi = st.number_input("Expected Investment Growth (%/yr CAGR)", min_value=4.0, max_value=18.0, value=10.0, step=0.5)
 
-            calc_btn = st.form_submit_button("Calculate Inflation-Adjusted Monthly SIP", type="primary")
+            calc_btn = st.form_submit_button("Calculate Required Monthly Investment", type="primary")
 
         if calc_btn or g_name:
             res = compute_goal_feasibility(
@@ -168,20 +251,22 @@ def show_savings_advisor_page():
 
             st.markdown(
                 f"""
-                <div style="background-color: #E6F4F2; border: 1px solid #86EFAC; border-radius: 12px; padding: 18px; margin-top: 1rem;">
-                    <h3 style="color: {PRIMARY_TEAL}; margin-top: 0;">Goal Projection: {res['goal_name']}</h3>
-                    <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+                <div class="aether-card" style="border-left: 4px solid {PRIMARY_ACCENT}; margin-top: 1.5rem;">
+                    <div style="font-size: 1.15rem; font-weight: 700; color: {TEXT_PRIMARY}; margin-bottom: 12px;">
+                        Goal Projection: {res['goal_name']}
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
                         <div>
-                            <span style="font-size: 0.85rem; color: #475569;">Target in Today's Rupees</span><br>
-                            <strong style="font-size: 1.25rem; color: {TEXT_NAVY};">{format_inr(res['original_target'])}</strong>
+                            <div style="font-size: 0.75rem; color: {TEXT_SECONDARY}; text-transform: uppercase; font-weight: 600;">Today's Target</div>
+                            <div style="font-size: 1.3rem; font-weight: 800; color: {TEXT_PRIMARY};">{format_inr(res['original_target'])}</div>
                         </div>
                         <div>
-                            <span style="font-size: 0.85rem; color: #475569;">Future Cost in {res['years']} Years ({g_inf}% Inflation)</span><br>
-                            <strong style="font-size: 1.25rem; color: #DC2626;">{format_inr(res['inflated_target'])}</strong>
+                            <div style="font-size: 0.75rem; color: {COLOR_DANGER}; text-transform: uppercase; font-weight: 600;">Inflated Cost ({res['years']} Yrs @ {g_inf}%)</div>
+                            <div style="font-size: 1.3rem; font-weight: 800; color: {COLOR_DANGER};">{format_inr(res['inflated_target'])}</div>
                         </div>
                         <div>
-                            <span style="font-size: 0.85rem; color: #475569;">Required Monthly Investment (at {g_roi}% CAGR)</span><br>
-                            <strong style="font-size: 1.4rem; color: {PRIMARY_TEAL};">{format_inr(res['monthly_sip_needed'])}/mo</strong>
+                            <div style="font-size: 0.75rem; color: {PRIMARY_ACCENT}; text-transform: uppercase; font-weight: 600;">Required Monthly SIP (@ {g_roi}% CAGR)</div>
+                            <div style="font-size: 1.45rem; font-weight: 800; color: {PRIMARY_ACCENT};">{format_inr(res['monthly_sip_needed'])}/mo</div>
                         </div>
                     </div>
                 </div>
