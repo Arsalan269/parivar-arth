@@ -20,6 +20,7 @@ from app.styles import (
     apply_theme, render_header, render_footer, render_metric_card,
     render_sidebar_brand, render_sidebar_user,
     PRIMARY_ACCENT, SECONDARY_ACCENT, SOFT_PURPLE,
+    BG_PRIMARY, BG_CARD,
     TEXT_PRIMARY, TEXT_SECONDARY, BORDER_COLOR,
     COLOR_SUCCESS, COLOR_WARNING, COLOR_DANGER
 )
