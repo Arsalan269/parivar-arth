@@ -1,6 +1,6 @@
 """
-SHAP and Feature Attribution Explainability for Parivar Arth.
-Translates technical feature importance scores and SHAP values
+Feature Importance and Attribution Explainability for Parivar Arth.
+Translates technical feature importance scores
 into plain-language economic explanations for Indian families.
 """
 

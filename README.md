@@ -2,7 +2,7 @@
 ### Family Financial Planning & Intelligence Platform
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-6C63FF.svg)](https://www.python.org/)
-[![Streamlit 1.30+](https://img.shields.io/badge/streamlit-1.30+-8B83FF.svg)](https://streamlit.io/)
+[![Streamlit 1.35+](https://img.shields.io/badge/streamlit-1.35+-8B83FF.svg)](https://streamlit.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-202334.svg)](LICENSE)
 [![Tests Passing](https://img.shields.io/badge/tests-29%2F29%20passed-20B486.svg)](tests/)
 
@@ -10,12 +10,14 @@
 
 ## Executive Summary
 
-Household expenses in India rise continuously, yet family budgets rarely adjust in advance. Grocery expenses experience monsoon volatility, private school fees escalate 8-10% annually, healthcare expenses outpace baseline wage growth, and home loan EMIs rise whenever the Reserve Bank of India (RBI) hikes the repo rate.
+Household expenses in India rise continuously, yet family budgets rarely adjust in advance. Grocery expenses experience monsoon volatility, private school fees escalate 8–10% annually, healthcare expenses outpace baseline wage growth, and home loan EMIs rise whenever the Reserve Bank of India (RBI) hikes the repo rate.
 
-**Parivar Arth** bridges this gap. It is a multi-user, personal financial intelligence platform engineered specifically for Indian households (salaried professionals, gig workers, business owners, and joint families).
+**Parivar Arth** bridges this gap. It is a multi-user personal financial intelligence platform engineered for Indian households (salaried professionals, gig workers, business owners, and joint families).
 
-**The Core Idea**: *The inflation forecast is the engine; personal planning is the product.* 
-Rather than applying headline CPI or today's static prices, Parivar Arth models category-wise inflation (Groceries, Education, Health, Housing, Transport, Fuel) using machine learning, and compounds those rates onto real household commitments to project future cash flows, detect exact shortfall months, and surface high-impact expense reduction levers.
+**The Core Concept**: *The inflation forecast is the engine; personal planning is the product.* 
+Rather than applying generic headline CPI or static current prices, Parivar Arth models category-wise inflation (Groceries, Education, Health, Housing, Transport, Fuel) using machine learning, and compounds those rates onto real household commitments to project future cash flows, detect exact shortfall months, and surface high-impact expense reduction levers.
+
+> **Data Disclosure**: The CPI time-series in this repository is a statistically calibrated synthetic fallback (142 monthly observations from January 2015 to October 2026) calibrated against historical Indian economic averages, and is not a live streaming MoSPI API feed. All forward-looking projections and shortfall dates are statistical estimates intended for educational financial planning.
 
 ---
 
@@ -24,11 +26,11 @@ Rather than applying headline CPI or today's static prices, Parivar Arth models 
 ```mermaid
 flowchart TD
     subgraph DataEngine["1. ML Data & Forecasting Engine"]
-        MOSPI["MoSPI Official CPI Groups<br/>(Food, Health, Educ, Rent, Fuel)"]
-        MACRO["Macro & Financial Drivers<br/>(Brent Crude, USD/INR, RBI Repo)"]
-        CV["Walk-Forward Time-Series Split<br/>(Zero Lookahead Leakage)"]
-        MODELS["Model Benchmark & Selection<br/>(SARIMA vs Random Forest vs XGBoost)"]
-        FORECASTS["24-Month Category Trajectories<br/>+ 95% Confidence Intervals"]
+        MOSPI["Calibrated CPI Group Time Series<br/>(Food, Health, Educ, Rent, Fuel, Transport)"]
+        MACRO["Macro & Financial Drivers<br/>(Brent Crude, USD/INR, RBI Repo, WPI, Rainfall)"]
+        CV["5-Fold Walk-Forward TimeSeriesSplit<br/>(Zero Lookahead Leakage)"]
+        MODELS["Model Leaderboard<br/>(Naive vs Moving Avg vs SARIMA vs RF vs XGBoost)"]
+        FORECASTS["24-Month Category Trajectories<br/>+ 80% Prediction Intervals"]
         MOSPI --> CV
         MACRO --> CV
         CV --> MODELS
@@ -36,8 +38,8 @@ flowchart TD
     end
 
     subgraph CorePlatform["2. Secure Multi-Tenant Core"]
-        AUTH["Auth & Security Engine<br/>(bcrypt, 5-Attempt Lockout, 20-min Timeout)"]
-        DB[(SQLAlchemy ORM<br/>SQLite WAL / PostgreSQL)]
+        AUTH["Auth & Security Engine<br/>(bcrypt 12 rounds, 5-Attempt Lockout, 20-min Timeout)"]
+        DB[(SQLAlchemy 2.0 ORM<br/>SQLite WAL / PostgreSQL)]
         VERSIONING["Temporal Versioning Engine<br/>(effective_from / effective_to)"]
         AUTH <--> DB
         VERSIONING <--> DB
@@ -47,10 +49,10 @@ flowchart TD
         PROFILE["Mandatory Household Profile<br/>(Earners, Dependents, Housing, Loans)"]
         SHORTFALL["Shortfall Predictor & Gap Timeline<br/>(Income vs Essential Compound Cost)"]
         MONTECARLO["1,000-Run Monte Carlo Simulation<br/>(Probabilistic Cash-Flow Failure)"]
-        LEVERS["'Reduce Necessary Expenses' Engine<br/>(Rent, Slabs, Fuel, Groceries, OTT)"]
-        DEBT["Debt Avalanche & Repo Rate Sensitivity<br/>(DTI Ratio, Floating EMI Shocks)"]
+        LEVERS["'Reduce Necessary Expenses' Engine<br/>(Rent ceiling >32%, Tariffs, Fuel, Groceries)"]
+        DEBT["Debt Avalanche & Repo Rate Sensitivity<br/>(DTI <=30% Safe, 30-45% Watch, >45% Risk)"]
         EMERGENCY["Dynamic Emergency Runway<br/>(3 vs 6 Months, Liquid Asset Filter)"]
-        SINKING["12-Month Sinking Fund & Calendar<br/>(School Fees, Festivals, Premiums)"]
+        SINKING["12-Month Sinking Fund & Calendar<br/>(School Fees, Festivals, Insurance Premiums)"]
     end
 
     subgraph Delivery["4. Delivery & Interfaces"]
@@ -67,103 +69,155 @@ flowchart TD
 
 ## Technology Stack
 
-| Layer | Technologies Used | Purpose |
+The project dependencies are pinned in `requirements.txt`:
+
+| Layer | Package & Version | Purpose |
 | :--- | :--- | :--- |
-| **User Interface** | Streamlit (Multipage), Plotly Express & Graph Objects | Aether FinTech design system with Inter typography, soft neutral canvas, and responsive metric cards |
-| **Data & ML** | pandas, numpy, scikit-learn, xgboost, statsmodels (SARIMA) | Walk-forward cross-validation, feature engineering, and 24-month autoregressive inflation forecasting |
-| **Database** | SQLAlchemy 2.0 ORM, SQLite (WAL mode, Foreign Keys), PostgreSQL-ready | Secure persistence with versioned financial records and cascade deletion |
-| **Security & Auth** | bcrypt, Python `secrets`, SHA-256 tokens | Salted password hashing, brute-force lockout, session timeouts, multi-tenant data isolation |
-| **Reports** | `fpdf2`, `openpyxl` | One-click exportable executive PDF summaries and multi-tab Excel workbooks |
-| **Testing** | `pytest` | 29 comprehensive automated tests across security, time-series, math, and reporting |
+| **User Interface** | `streamlit>=1.35.0` | Modern 8-page multipage web application canvas |
+| **Visualizations** | `plotly>=5.20.0` | Interactive charts styled with Aether FinTech visual tokens |
+| **Data Processing** | `pandas>=2.1.0`, `numpy>=1.26.0` | Vectorized cash flow matrices and time-series arrays |
+| **Machine Learning** | `scikit-learn>=1.4.0` | `TimeSeriesSplit` cross-validation, Random Forest Regressor, and evaluation metrics |
+| **Gradient Boosting** | `xgboost>=2.0.0` | Primary production regression model for category inflation forecasting |
+| **Statistical Time-Series** | `statsmodels>=0.14.0` | SARIMA benchmark modeling |
+| **Database ORM** | `SQLAlchemy>=2.0.0` | Object-relational mapping with SQLite WAL mode and PostgreSQL compatibility |
+| **Password Security** | `bcrypt>=4.0.0` | Salted password hashing with 12 work factor rounds |
+| **Environment Config** | `python-dotenv>=1.0.0` | Configuration loading from `.env` |
+| **PDF Reporting** | `fpdf2>=2.7.0` | Downloadable executive household financial statement |
+| **Excel Export** | `openpyxl>=3.1.0` | Multi-tab `.xlsx` financial model generator |
+| **External Drivers** | `requests>=2.31.0`, `yfinance>=0.2.35` | Macro market driver fetching utilities |
 
 ---
 
-## Aether FinTech Design System
+## Machine Learning Pipeline & Verified Benchmark Leaderboard
 
-Parivar Arth utilizes an **Aether-inspired FinTech design system** delivering a minimal, high-contrast dashboard experience:
+### Methodology
+- **Validation**: 5-fold expanding-window `TimeSeriesSplit` ensuring zero future lookahead leakage.
+- **Feature Matrix**:
+  - Autoregressive lags: `lag_1`, `lag_2`, `lag_3`, `lag_12`
+  - Rolling window statistics: `rolling_mean_3m`, `rolling_std_3m`, `rolling_mean_6m`, `rolling_std_6m`
+  - Base effect: `base_effect_12m` (price level from 12 months ago)
+  - Seasonal calendar dummies: `is_monsoon` (June–Sept), `is_festival` (Sept–Nov), `is_school_season` (April–June)
+  - Exogenous macro drivers (lagged by 1 month): International Crude Oil (INR), USD/INR Exchange Rate, RBI Repo Rate, Rainfall Departure, Wholesale Price Inflation (WPI)
+- **Uncertainty Bounds**: 80% residual-based prediction intervals (`compute_prediction_intervals`, confidence level 0.80).
 
-- **Primary Background (`#F5F7FA`)**: Soft neutral canvas reducing eye fatigue.
-- **Card Background (`#FFFFFF`)**: Crisp, elevated card surfaces with subtle borders (`#E9EAF0`) and soft shadows (`0 4px 20px rgba(0, 0, 0, 0.03)`).
-- **Primary Accent (`#6C63FF`) & Secondary Accent (`#8B83FF`)**: Electric violet gradients for primary action buttons, active navigation states, and key financial highlights.
-- **Soft Purple (`#EFEDFF`)**: Active menu indicators and pill backgrounds.
-- **Primary Text (`#202334`)**: High-contrast deep slate for headers and numerical figures.
-- **Secondary Text (`#73788C`)**: Muted slate for metadata, labels, and timestamps.
-- **Status Indicators**:
-  - **Safe** (`#20B486`): Emergency runway >= 6 months, DTI <= 35%, positive cash flow trajectory.
-  - **Watch** (`#F4B740`): Emergency runway 3-6 months, DTI 35-45%, minor deficit within 18 months.
-  - **At Risk** (`#EF6461`): Emergency runway < 3 months, DTI > 45%, immediate shortfall.
-- **Typography**: Inter (SemiBold for headers, Bold for financial figures, Regular for body).
-- **Indian Rupee Formatting**: Native Indian numbering format across the UI (`₹1,25,000` rather than `₹125,000`).
+### Walk-Forward Cross-Validation Leaderboard (Real Output from `python scripts/train_models.py`)
+
+The table below reflects the exact output generated by running `python scripts/train_models.py` across all commodity groups (including categories where Naive Baseline outperformed complex models):
+
+| Category | Best Model | Out-of-Fold RMSE | Out-of-Fold MAPE | Improvement vs Naive Baseline |
+| :--- | :--- | :--- | :--- | :--- |
+| **Headline CPI** | Random Forest | 0.677 | 9.9% | +18.54% |
+| **Food and Beverages** | XGBoost | 1.685 | 28.8% | +2.72% |
+| **Housing** | Random Forest | 0.676 | 11.5% | +14.25% |
+| **Fuel and Light** | Naive Baseline | 1.501 | 27.6% | +0.01% |
+| **Transport and Communication** | Naive Baseline | 1.526 | 24.0% | +0.02% |
+| **Health** | XGBoost | 0.813 | 8.0% | +21.61% |
+| **Education** | XGBoost | 0.720 | 7.5% | +18.82% |
+| **Miscellaneous Services** | XGBoost | 0.618 | 8.9% | +21.15% |
+
+*Note: For Fuel & Light and Transport & Communication, the high persistence and frequent external policy adjustments make the Naive Baseline competitive with ML regressors. The pipeline transparently documents these results.*
 
 ---
 
-## Project Directory Structure
+## Core Planning Rules & Verified Parameter Thresholds
+
+All logic in Parivar Arth is verified against explicit code parameters:
+
+- **Security & Authentication** (`core/auth.py`):
+  - Password hashing: `bcrypt` with 12 salt rounds
+  - Password strength: Minimum 8 characters, at least 1 letter, at least 1 number
+  - Account lockout: Triggered after **5 consecutive failed login attempts** (`MAX_FAILED_ATTEMPTS = 5`)
+  - Lockout duration: **15 minutes** (`LOCKOUT_DURATION_MINUTES = 15`)
+  - Session timeout: **20 minutes of inactivity** (`SESSION_TIMEOUT_MINUTES = 20`)
+  - Password reset token validity: **30 minutes** (`RESET_TOKEN_EXPIRY_MINUTES = 30`), single-use SHA-256 hashed token
+- **Debt-to-Income (DTI) Thresholds** (`planner/loans.py`):
+  - **Safe**: DTI `<= 30.0%`
+  - **Watch**: `30.0% < DTI <= 45.0%`
+  - **At Risk**: DTI `> 45.0%`
+- **Housing / Rent Optimization Ceiling** (`planner/reduction.py`):
+  - Flagged when housing expenses exceed **32.0% of monthly income** and are greater than **₹15,000/month**
+- **Emergency Runway Rules** (`planner/emergency.py`):
+  - Target: **3 months** for dual stable salaried earners
+  - Target: **6 months** for single earner households, variable gig income, or dependent family members with chronic medical conditions
+  - Liquid assets strictly filtered: Savings bank accounts and Fixed Deposits (FDs) are included; locked provident funds (EPF/PPF) and physical real estate are excluded
+- **Budget Distribution Standard** (`core/expense_service.py`):
+  - Needs (~50%), Wants (~30%), Savings (~20%)
+
+---
+
+## Application Structure (The 8 Pages)
 
 ```text
 parivar_arth/
 ├── .streamlit/
-│   ├── config.toml               # Aether FinTech theme tokens, colors, fonts
+│   ├── config.toml               # Streamlit theme tokens, fonts, and layout options
 │   └── secrets.toml.example      # Template for environment variables and secrets
 ├── app/
 │   ├── components/
-│   │   ├── auth_forms.py         # Login, registration, password reset forms
-│   │   └── formatters.py         # Indian Rupee digit grouping & percentage formatters
+│   │   ├── auth_forms.py         # Sign In, registration, and password reset form components
+│   │   └── formatters.py         # Indian Rupee digit grouping (format_inr) and percentage formatters
 │   ├── pages/
-│   │   ├── 1_My_Profile.py       # Versioned household onboarding wizard & audit trail
-│   │   ├── 2_Monthly_Tracker.py  # Daily expense logging, 50/30/20 split, z-score anomaly
-│   │   ├── 3_Savings_Advisor.py  # Impact-ranked savings levers & goals calculator
-│   │   ├── 4_Future_Planner.py   # Shortfall engine, 1,000-run Monte Carlo, what-if stress tests
-│   │   ├── 5_Reduce_Expenses.py  # Actionable reduction levers (rent, electricity slabs, fuel)
-│   │   ├── 6_Loans_Emergency.py  # DTI tracker, Avalanche vs Snowball, RBI repo rate shock
-│   │   ├── 7_Yearly_Calendar.py  # Sinking fund planner & 12-month cash-flow heatmap
-│   │   └── 8_Reports.py          # One-click downloadable PDF and Excel exports
-│   ├── Login.py                  # Primary entrypoint, auth gate & authenticated dashboard
-│   ├── main.py                   # Forwarder to Login.py for Streamlit Cloud compatibility
-│   └── styles.py                 # Shared Aether CSS design tokens, card styles, and footers
+│   │   ├── 1_My_Profile.py       # Onboarding wizard, active household plan, versioned edits, audit trail
+│   │   ├── 2_Monthly_Tracker.py  # Daily expense logging, 50/30/20 split, CSV import, anomaly banner
+│   │   ├── 3_Savings_Advisor.py  # Prioritized savings levers, MoSPI peer benchmarks, goal calculator
+│   │   ├── 4_Future_Planner.py   # 24m shortfall timeline, Monte Carlo (1,000 runs), what-if shocks, milestones
+│   │   ├── 5_Reduce_Expenses.py  # Practical, dignified reduction levers and interactive reclaim simulator
+│   │   ├── 6_Loans_Emergency.py  # Runway status, liquid breakdown, DTI, Avalanche/Snowball, repo shock
+│   │   ├── 7_Yearly_Calendar.py  # 12-month outflow matrix, sinking fund allocations, recurring items
+│   │   └── 8_Reports.py          # Executive PDF statement (fpdf2) and Excel workbook (openpyxl) exports
+│   ├── Login.py                  # Primary entrypoint: authentication gate and household dashboard
+│   ├── main.py                   # Forwarder to Login.py for Streamlit Cloud deployment compatibility
+│   └── styles.py                 # Shared Aether design tokens, CSS rules, headers, cards, and badges
 ├── core/
-│   ├── auth.py                   # bcrypt hashing, account lockout, SHA-256 reset tokens
-│   ├── db.py                     # SQLAlchemy session manager & SQLite/PostgreSQL engine
-│   ├── expense_service.py        # Variable expense tracking, 50/30/20 split, z-score anomaly
-│   ├── models.py                 # Declarative database models (Profiles, Incomes, Loans, etc.)
-│   ├── profile_service.py        # Conditional profile validation & temporal versioning engine
-│   └── security.py               # Tenant session security & admin privilege enforcement
+│   ├── auth.py                   # bcrypt hashing, brute-force lockout, session timeouts, SHA-256 tokens
+│   ├── db.py                     # SQLAlchemy engine and sessionmaker (SQLite WAL / PostgreSQL)
+│   ├── expense_service.py        # Variable expense tracking, 50/30/20 split, z-score anomaly detector
+│   ├── models.py                 # Declarative database models (Users, Profiles, Obligations, Loans, etc.)
+│   ├── profile_service.py        # Household onboarding and temporal versioning (effective_from / effective_to)
+│   └── security.py               # Session touch and tenant isolation
 ├── data/
 │   ├── cpi/                      # Calibrated MoSPI Indian CPI monthly series (2015-2026)
 │   ├── models/                   # Serialized production XGBoost models (.json)
-│   └── seed/                     # Synthetic test households (Sharma, Patel, Verma)
+│   └── seed/                     # Test data seed definitions
+├── docs/
+│   ├── benchmark_results.md      # Real printed benchmark results from train_models.py
+│   ├── CHANGES_FOR_REPORT.md     # Code verification audit and claim discrepancies table
+│   └── PROJECT_REPORT.md         # Academic project report documentation
 ├── ml/
 │   ├── data_sources/
+│   │   ├── base.py               # Base class for data sources
 │   │   ├── market_macro.py       # Macro drivers (Brent crude, USD/INR, RBI repo rate)
-│   │   └── mospi_cpi.py          # MoSPI category indices & CPI weight calculations
-│   ├── evaluate.py               # RMSE, MAE, MAPE, prediction intervals, benchmark metrics
-│   ├── explain.py                # Feature importance & directionality analysis
-│   ├── features.py               # Lags (1,2,3,6,12), rolling statistics, seasonal festival flags
-│   ├── forecast.py               # 24-month autoregressive category projection engine
-│   ├── pipeline.py               # End-to-end data preparation & validation pipeline
-│   └── train.py                  # Walk-forward cross validation & multi-model trainer
+│   │   └── mospi_cpi.py          # CPI category indices and calibrated synthetic fallback
+│   ├── evaluate.py               # Metrics calculation (RMSE, MAE, MAPE, SMAPE) and 80% prediction intervals
+│   ├── explain.py                # Feature importance extraction and economic narrative generator
+│   ├── features.py               # Lags (1, 2, 3, 12), rolling statistics, and seasonal festival flags
+│   ├── forecast.py               # 24-month forward category projection engine
+│   ├── pipeline.py               # Data harmonization and validation pipeline
+│   └── train.py                  # Walk-forward cross validation and multi-model trainer
 ├── planner/
-│   ├── emergency.py              # Dynamic emergency fund rules (3 vs 6 months) & runway
-│   ├── family_goals.py           # Child education milestone inflation & goal calculator
-│   ├── loans.py                  # DTI calculation, Avalanche/Snowball ranker, repo shock
-│   ├── montecarlo.py             # 1,000-run Monte Carlo cash-flow failure simulation
+│   ├── emergency.py              # Dynamic emergency fund rules (3 vs 6 months) and liquid asset filter
+│   ├── family_goals.py           # Education milestones and elderly healthcare provision calculator
+│   ├── loans.py                  # DTI calculation, Avalanche vs Snowball ranker, repo rate shock simulator
+│   ├── montecarlo.py             # 1,000-run Monte Carlo cash flow simulation
 │   ├── projection.py             # Compounded monthly expense growth engine
-│   ├── reduction.py              # Category-specific expense trimming recommendations
-│   ├── savings.py                # Rule-based savings levers ranked by rupee impact
-│   ├── shortfall.py              # Core shortfall detection & trajectory engine
-│   └── sinking_funds.py          # Irregular / annual cost sinking fund & 12m cashflow
+│   ├── reduction.py              # Actionable expense reduction recommendations
+│   ├── savings.py                # Prioritized savings levers and MoSPI peer comparison benchmarks
+│   ├── shortfall.py              # Shortfall detection engine and 24-month gap timeline
+│   └── sinking_funds.py          # Irregular expenditure smoothing and 12-month cashflow matrix
 ├── reports/
-│   ├── excel_generator.py        # Multi-tab openpyxl workbook generator
-│   └── pdf_generator.py          # Executive PDF report generator via fpdf2
+│   ├── excel_generator.py        # Multi-tab OpenXML (.xlsx) workbook generator via openpyxl
+│   └── pdf_generator.py          # Executive PDF statement generator via fpdf2
 ├── scripts/
-│   ├── seed_demo_data.py         # Database seeding script for sample households
-│   └── train_models.py           # CLI model training & evaluation pipeline runner
+│   ├── seed_demo_data.py         # Database initialization and ML forecast seeder
+│   └── train_models.py           # CLI model training and cross-validation leaderboard runner
 ├── tests/
+│   ├── conftest.py               # Shared test fixtures and in-memory test database
 │   ├── test_auth_security.py     # Password hashing, lockout, timeouts, reset flow (8 tests)
 │   ├── test_math_hand_verified.py# Hand-verified compounding, shortfall, DTI, repo shock (4 tests)
 │   ├── test_planner_logic.py     # Sinking funds, 50/30/20, emergency runway, anomaly (6 tests)
 │   ├── test_profile_versioning.py# Conditional rules, temporal versioning, audit trail (3 tests)
-│   ├── test_reports.py           # PDF & Excel binary generation validation (4 tests)
-│   └── test_time_series_leakage.py # Zero-leakage walk-forward CV, metrics, forecasts (4 tests)
+│   ├── test_reports.py           # PDF and Excel binary generation validation (4 tests)
+│   └── test_time_series_leakage.py# Zero-leakage walk-forward CV, metrics, forecasts (4 tests)
 ├── pytest.ini                    # Pytest configuration
 ├── requirements.txt              # Production dependency specifications
 └── README.md                     # Comprehensive system documentation
@@ -180,7 +234,7 @@ parivar_arth/
 ### 2. Clone and Setup Environment
 ```bash
 # Clone the repository
-git clone https://github.com/Arsalan269/parivar-arth.git
+git clone https://github.com/arsalan269/parivar-arth.git
 cd parivar-arth
 
 # Create and activate a virtual environment
@@ -196,37 +250,30 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Launch the Web Application
+### 3. Initialize Forecasts and Run Application
 ```bash
+# Optional: run ML training and forecast population
+python scripts/train_models.py
+
+# Launch the Streamlit application
 streamlit run app/Login.py
 ```
 Open your browser at `http://localhost:8501`.
 
----
-
-## Pre-Seeded Demo Households
-
-You can log in directly using any of the pre-configured accounts:
-
-| Household / User | Email | Password | Profile Archetype & Scenario |
-| :--- | :--- | :--- | :--- |
-| **The Sharma Family** | `aarav@sharma.in` | `SharmaFamily123` | **Dual-earner salaried** (₹1,15,000/mo) in Delhi NCR. 2 school-going children, home loan EMI (₹32,000), facing high education (8.5%) and grocery inflation. |
-| **The Patel Household** | `ketan@patel.in` | `PatelFamily123` | **Small business owner** (₹85,000/mo variable) in Ahmedabad. 2 dependent elderly parents with chronic medical needs (₹9,500/mo), vulnerable to medical inflation (9.2%). |
-| **The Verma Household** | `amit@verma.in` | `VermaFamily123` | **Single young gig worker / tech consultant** (₹65,000/mo) renting in Bengaluru. High urban rent (₹22,000/mo) and fuel costs, low emergency savings runway. |
-
-*(Note: You can also register a brand-new user anytime directly on the home page).*
+### 4. User Registration
+New households can register immediately on the Sign In page using the **"Register New Family"** tab. All household profiles, expenses, and loans are strictly isolated.
 
 ---
 
 ## Automated Test Suite
 
-Run the full pytest test suite:
+Run the full automated test suite:
 
 ```bash
-pytest tests/
+pytest tests/ -q
 ```
 
-Results: **29 of 29 tests pass** with zero errors.
+Result: **29 passed** with zero failures or warnings.
 
 ---
 
