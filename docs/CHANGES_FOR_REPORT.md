@@ -32,7 +32,7 @@ This document records the exact, verified facts inspected directly from the code
 | **Session Inactivity** | `core/auth.py` | **20-minute rolling timeout** (`SESSION_TIMEOUT_MINUTES = 20`). |
 | **Password Reset Token** | `core/auth.py` | 32-character token expiring in **30 minutes** (`RESET_TOKEN_EXPIRY_MINUTES = 30`), single-use SHA-256 hashed. |
 | **Aether Design Tokens** | `app/styles.py` | Background: `#F5F7FA`, Card: `#FFFFFF`, Primary Accent: `#6C63FF`, Secondary Accent: `#8B83FF`, Soft Purple: `#EFEDFF`, Text: `#202334`, Muted Text: `#73788C`, Border: `#E9EAF0`, Success: `#20B486`, Warning: `#F4B740`, Danger: `#EF6461`. |
-| **Automated Test Count** | `tests/` | Exactly **29 tests** across 6 test modules, 100% passing. |
+| **Automated Test Count** | `tests/` | Exactly **27 tests** across 6 test modules, 100% passing. |
 
 ---
 

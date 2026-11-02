@@ -4,7 +4,7 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-6C63FF.svg)](https://www.python.org/)
 [![Streamlit 1.35+](https://img.shields.io/badge/streamlit-1.35+-8B83FF.svg)](https://streamlit.io/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-202334.svg)](LICENSE)
-[![Tests Passing](https://img.shields.io/badge/tests-29%2F29%20passed-20B486.svg)](tests/)
+[![Tests Passing](https://img.shields.io/badge/tests-27%2F27%20passed-20B486.svg)](tests/)
 
 ---
 
@@ -216,7 +216,7 @@ parivar_arth/
 │   ├── test_math_hand_verified.py# Hand-verified compounding, shortfall, DTI, repo shock (4 tests)
 │   ├── test_planner_logic.py     # Sinking funds, 50/30/20, emergency runway, anomaly (6 tests)
 │   ├── test_profile_versioning.py# Conditional rules, temporal versioning, audit trail (3 tests)
-│   ├── test_reports.py           # PDF and Excel binary generation validation (4 tests)
+│   ├── test_reports.py           # PDF and Excel binary generation validation (2 tests)
 │   └── test_time_series_leakage.py# Zero-leakage walk-forward CV, metrics, forecasts (4 tests)
 ├── pytest.ini                    # Pytest configuration
 ├── requirements.txt              # Production dependency specifications
@@ -273,7 +273,7 @@ Run the full automated test suite:
 pytest tests/ -q
 ```
 
-Result: **29 passed** with zero failures or warnings.
+Result: **27 passed** with zero failures or warnings.
 
 ---
 

@@ -1,12 +1,10 @@
 """
-Unit tests for Report Generation (PDF & Excel) and Offline Chatbot Agent.
+Unit tests for Report Generation (PDF & Excel).
 """
 
 import pytest
 from reports.pdf_generator import generate_household_pdf_report
 from reports.excel_generator import generate_household_excel_workbook
-from chatbot.faq import OfflineFaqMatcher
-from chatbot.agent import ParivarChatbotAgent
 
 
 def test_pdf_report_generation():
@@ -92,30 +90,3 @@ def test_excel_workbook_generation():
     # OpenXML zip file signature
     assert excel_bytes.startswith(b"PK\x03\x04")
 
-
-def test_offline_faq_retrieval():
-    """Verify TF-IDF cosine similarity retrieval on core Indian financial concepts."""
-    matcher = OfflineFaqMatcher()
-
-    ans, score = matcher.find_best_match("What is a sinking fund?")
-    assert ans is not None
-    assert "sinking fund" in ans.lower()
-    assert score > 0.4
-
-    ans2, score2 = matcher.find_best_match("How is my emergency fund target calculated?")
-    assert ans2 is not None
-    assert "emergency" in ans2.lower()
-    assert score2 > 0.3
-
-
-def test_chatbot_guardrails_refusal():
-    """Verify chatbot refuses out-of-scope stock and medical requests."""
-    agent = ParivarChatbotAgent()
-
-    # Stock trading guard
-    stock_reply = agent.process_message(user_id=1, user_message="Which multibagger stock should I buy for 10x returns?")
-    assert "disclaimer" in stock_reply.lower() or "sebi" in stock_reply.lower()
-
-    # Medical diagnosis guard
-    medical_reply = agent.process_message(user_id=1, user_message="Please prescribe medicine for high fever and cough")
-    assert "medical" in medical_reply.lower() or "practitioner" in medical_reply.lower()

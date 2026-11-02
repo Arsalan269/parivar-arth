@@ -74,4 +74,4 @@ Prices in India rise persistently across distinct commodity baskets (food, educa
 5. **Slide 5**: ML Model Performance & Walk-Forward Benchmark (XGBoost, Random Forest, SARIMA, Moving Average, Naive Baseline).
 6. **Slide 6**: Live Platform Walkthrough — Onboarding wizard, 24-month shortfall timeline, Monte Carlo fan chart, and sinking funds.
 7. **Slide 7**: Security & Ethics — bcrypt (12 rounds), 5-attempt brute-force lockout, multi-tenant session isolation, data privacy.
-8. **Slide 8**: Conclusion & Summary — 29 automated tests passing with zero errors.
+8. **Slide 8**: Conclusion & Summary — 27 automated tests passing with zero errors.
